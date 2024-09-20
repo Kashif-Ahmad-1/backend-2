@@ -2,7 +2,7 @@ const Company = require('../models/Company');
 
 // Add a new company
 exports.addCompany = async (req, res) => {
-  const { name, address } = req.body;
+  const { clientName, contactPerson,mobileNo,clientAddress } = req.body;
   const { role } = req.user;
 
   if (role !== 'admin' && role !== 'accountant') {
@@ -10,7 +10,7 @@ exports.addCompany = async (req, res) => {
   }
 
   try {
-    const company = new Company({ name, address });
+    const company = new Company({ clientName, contactPerson,mobileNo,clientAddress });
     await company.save();
     res.status(201).json(company);
   } catch (error) {
