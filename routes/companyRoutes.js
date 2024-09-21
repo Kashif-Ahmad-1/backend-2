@@ -13,5 +13,7 @@ router.put('/:id', authMiddleware, updateCompany);
 router.delete('/:id', authMiddleware, deleteCompany);
 router.get('/', authMiddleware, getCompanies); 
 
+// Add this line to your existing companyRoutes.js
+// router.get('/search', authMiddleware, searchCompanies);
 
 module.exports = router;

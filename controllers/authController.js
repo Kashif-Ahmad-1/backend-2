@@ -2,9 +2,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 exports.register = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, mobileNumber,address,role } = req.body;
   try {
-    const user = new User({ name, email, password, role });
+    const user = new User({ name, email, password, mobileNumber, address, role });
     await user.save();
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
@@ -25,3 +25,15 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// Logout function
+exports.logout = (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1]; // Assuming Bearer token
+
+  if (token) {
+    blacklistedTokens.add(token); // Add token to blacklist
+    res.status(200).json({ message: 'Logout successful' });
+  } else {
+    res.status(400).json({ error: 'No token provided' });
+  }
+}

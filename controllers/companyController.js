@@ -74,3 +74,24 @@ exports.deleteCompany = async (req, res) => {
     res.status(500).json({ error: 'Error deleting company' });
   }
 };
+
+
+// Search companies by client name
+exports.searchCompanies = async (req, res) => {
+  const { name } = req.query;
+  const { role } = req.user;
+
+  if (role !== 'admin' && role !== 'accountant') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    const companies = await Company.find({
+      clientName: { $regex: name, $options: 'i' } // Case-insensitive search
+    }).limit(10); // Limit the number of results
+    res.json(companies);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching companies' });
+  }
+};
+
