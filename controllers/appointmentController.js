@@ -51,10 +51,25 @@
 
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
-
+const Company = require('../models/Company');
 // Accountant creates an appointment
 exports.createAppointment = async (req, res) => {
-  const { clientName, clientAddress, contactPerson, mobileNo, appointmentDate, appointmentAmount, machineName, model, partNo, serialNo, installationDate, serviceFrequency, expectedServiceDate, engineer } = req.body;
+  const {
+    clientName,
+    clientAddress,
+    contactPerson,
+    mobileNo,
+    appointmentDate,
+    appointmentAmount,
+    machineName,
+    model,
+    partNo,
+    serialNo,
+    installationDate,
+    serviceFrequency,
+    expectedServiceDate,
+    engineer
+  } = req.body;
   const { userId, role } = req.user;
 
   if (role !== 'accountant') {
@@ -62,6 +77,21 @@ exports.createAppointment = async (req, res) => {
   }
 
   try {
+    // Check if the company already exists
+    let company = await Company.findOne({ clientName, mobileNo });
+
+    // If it doesn't exist, create a new company
+    if (!company) {
+      company = new Company({
+        clientName,
+        contactPerson,
+        mobileNo,
+        clientAddress
+      });
+      await company.save();
+    }
+
+    // Create the appointment using the company details
     const appointment = new Appointment({
       clientName,
       clientAddress,
@@ -79,6 +109,7 @@ exports.createAppointment = async (req, res) => {
       engineer,
       createdBy: userId,
     });
+
     await appointment.save();
     res.status(201).json(appointment);
   } catch (error) {

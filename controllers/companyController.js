@@ -76,22 +76,23 @@ exports.deleteCompany = async (req, res) => {
 };
 
 
-// Search companies by client name
-exports.searchCompanies = async (req, res) => {
-  const { name } = req.query;
-  const { role } = req.user;
 
-  if (role !== 'admin' && role !== 'accountant') {
-    return res.status(403).json({ error: 'Access denied' });
+// In your searchCompaniesByName function
+exports.searchCompaniesByName = async (req, res) => {
+  const { name } = req.query;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Name query parameter is required' });
   }
 
   try {
     const companies = await Company.find({
       clientName: { $regex: name, $options: 'i' } // Case-insensitive search
-    }).limit(10); // Limit the number of results
+    }).limit(10);
+
     res.json(companies);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching companies' });
+    console.error('Error fetching companies:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
-

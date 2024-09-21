@@ -3,7 +3,8 @@ const {
   addCompany,
   updateCompany,
   deleteCompany,
-  getCompanies
+  getCompanies,
+  searchCompaniesByName, // Import the search function
 } = require('../controllers/companyController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 const router = express.Router();
@@ -11,9 +12,9 @@ const router = express.Router();
 router.post('/', authMiddleware, addCompany);
 router.put('/:id', authMiddleware, updateCompany);
 router.delete('/:id', authMiddleware, deleteCompany);
-router.get('/', authMiddleware, getCompanies); 
+router.get('/', authMiddleware, getCompanies);
 
-// Add this line to your existing companyRoutes.js
-// router.get('/search', authMiddleware, searchCompanies);
+// Add the search route for companies
+router.get('/search', authMiddleware, searchCompaniesByName);
 
 module.exports = router;
