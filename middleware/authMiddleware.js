@@ -14,15 +14,8 @@
 //   }
 // };
 
-
 const jwt = require('jsonwebtoken');
-
-// Assuming blacklistedTokens is available here, you might want to import it
-let blacklistedTokens = new Set(); // Consider a more persistent storage in production
-
-exports.setBlacklistedTokens = (tokens) => {
-  blacklistedTokens = tokens;
-};
+const { isTokenBlacklisted } = require('../utils/tokenManager'); // Adjust the path as needed
 
 exports.authMiddleware = (req, res, next) => {
   const token = req.header('Authorization');
@@ -31,7 +24,7 @@ exports.authMiddleware = (req, res, next) => {
   }
 
   const tokenValue = token.split(' ')[1]; // Extract the actual token
-  if (blacklistedTokens.has(tokenValue)) {
+  if (isTokenBlacklisted(tokenValue)) {
     return res.status(401).json({ error: 'Token has been blacklisted' });
   }
 
@@ -43,3 +36,4 @@ exports.authMiddleware = (req, res, next) => {
     res.status(401).json({ error: 'Token is not valid' });
   }
 };
+

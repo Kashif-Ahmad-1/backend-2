@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-
+const { addToken } = require('../utils/tokenManager');
 exports.register = async (req, res) => {
   const { name, email, password, mobileNumber,address,role } = req.body;
   try {
@@ -31,9 +31,9 @@ exports.logout = (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1]; // Assuming Bearer token
 
   if (token) {
-    blacklistedTokens.add(token); // Add token to blacklist
+    addToken(token); // Add token to blacklist
     res.status(200).json({ message: 'Logout successful' });
   } else {
     res.status(400).json({ error: 'No token provided' });
   }
-}
+};
