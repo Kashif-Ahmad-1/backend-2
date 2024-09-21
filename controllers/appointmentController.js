@@ -1,57 +1,21 @@
-// const Appointment = require('../models/Appointment');
-// const User = require('../models/User');
-
-// // Accountant creates an appointment
-// exports.createAppointment = async (req, res) => {
-//   const { engineer, company, machine, appointmentDate } = req.body;
-//   const { userId, role } = req.user;
-
-//   if (role !== 'accountant') {
-//     return res.status(403).json({ error: 'Access denied' });
-//   }
-
-//   try {
-//     const appointment = new Appointment({
-//       engineer,
-//       company,
-//       machine,
-//       appointmentDate,
-//       createdBy: userId,
-//     });
-//     await appointment.save();
-//     res.status(201).json(appointment);
-//   } catch (error) {
-//     res.status(400).json({ error: 'Error creating appointment' });
-//   }
-// };
-
-// // Get all appointments (Accountant/Admin)
-// exports.getAppointments = async (req, res) => {
-//   const { role, userId } = req.user;
-
-//   try {
-//     let appointments;
-
-//     if (role === 'accountant' || role === 'admin') {
-//       appointments = await Appointment.find().populate('engineer');
-//     } else if (role === 'engineer') {
-//       appointments = await Appointment.find({ engineer: userId }).populate('createdBy');
-//     } else {
-//       return res.status(403).json({ error: 'Access denied' });
-//     }
-
-//     res.json(appointments);
-//   } catch (error) {
-//     res.status(500).json({ error: 'Error fetching appointments' });
-//   }
-// };
-
-
-
-
+const multer = require('multer');
+const path = require('path');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const Company = require('../models/Company');
+
+// Create an instance of multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Ensure this folder exists
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
 // Accountant creates an appointment
 exports.createAppointment = async (req, res) => {
   const {
@@ -70,9 +34,10 @@ exports.createAppointment = async (req, res) => {
     expectedServiceDate,
     engineer
   } = req.body;
+  
   const { userId, role } = req.user;
 
-  if (role !== 'accountant') {
+  if (role !== 'accountant' && role !== 'engineer') {
     return res.status(403).json({ error: 'Access denied' });
   }
 
@@ -108,11 +73,13 @@ exports.createAppointment = async (req, res) => {
       expectedServiceDate,
       engineer,
       createdBy: userId,
+      document: req.file ? req.file.path : null // Store file path if uploaded
     });
 
     await appointment.save();
     res.status(201).json(appointment);
   } catch (error) {
+    console.error(error); // Log the error for debugging
     res.status(400).json({ error: 'Error creating appointment' });
   }
 };
@@ -134,14 +101,10 @@ exports.getAppointments = async (req, res) => {
 
     res.json(appointments);
   } catch (error) {
+    console.error(error); // Log the error for debugging
     res.status(500).json({ error: 'Error fetching appointments' });
   }
 };
 
-
-
-
-
-
-
-
+// Export the multer upload instance for use in routes
+exports.upload = upload;

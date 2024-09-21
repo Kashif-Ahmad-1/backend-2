@@ -6,6 +6,7 @@ const userRoutes = require('./routes/userRoutes');
 const appointmentRoutes = require('./routes/appointmentRoutes');
 const machineRoutes = require('./routes/machineRoutes'); // Import machine routes
 const companyRoutes = require('./routes/companyRoutes'); // Import company routes
+const path = require('path');
 dotenv.config();
 const cors = require('cors');
 const app = express();
@@ -25,6 +26,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/machines', machineRoutes); 
 app.use('/api/companies', companyRoutes); 
+
+
+// Serve static files from the "uploads" directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
