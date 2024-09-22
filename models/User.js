@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
   mobileNumber: { type: String, required: true },
   address: { type: String, required: false },
   role: { type: String, enum: ['admin', 'accountant', 'engineer'], required: true },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   
 }, { timestamps: true });
 
