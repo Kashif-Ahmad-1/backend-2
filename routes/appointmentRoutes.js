@@ -1,5 +1,11 @@
 const express = require('express');
-const { createAppointment, getAppointments, upload } = require('../controllers/appointmentController');
+const {
+  createAppointment,
+  getAppointments,
+  editAppointment,
+  deleteAppointment,
+  upload,
+} = require('../controllers/appointmentController');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -7,10 +13,11 @@ const router = express.Router();
 // Route for creating an appointment with an optional file upload
 router.post('/', authMiddleware, upload.single('document'), createAppointment);
 router.get('/', authMiddleware, getAppointments);
-// Route for creating an appointment with file uploads
-router.post('/', authMiddleware, upload.fields([
-    { name: 'document', maxCount: 1 },
-    { name: 'checklistDocument', maxCount: 1 }
-  ]), createAppointment);
-  
+
+// Route for editing an appointment
+router.put('/:appointmentId', authMiddleware, upload.single('document'), editAppointment);
+
+// Route for deleting an appointment
+router.delete('/:appointmentId', authMiddleware, deleteAppointment);
+
 module.exports = router;
