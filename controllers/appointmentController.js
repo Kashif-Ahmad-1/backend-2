@@ -71,9 +71,10 @@ exports.createAppointment = async (req, res) => {
       installationDate,
       serviceFrequency,
       expectedServiceDate,
-      engineer,
+      engineer: userId,
       createdBy: userId,
-      document: req.file ? req.file.path : null // Store file path if uploaded
+      document: req.file ? req.file.path : null, // Store file path if uploaded
+      checklistDocument: req.checklistFile ? req.checklistFile.path : null
     });
 
     await appointment.save();
@@ -85,6 +86,31 @@ exports.createAppointment = async (req, res) => {
 };
 
 // Get all appointments (Accountant/Admin)
+// exports.getAppointments = async (req, res) => {
+//   const { role, userId } = req.user;
+
+//   try {
+//     let appointments;
+
+//     if (role === 'accountant' || role === 'admin') {
+//       appointments = await Appointment.find().populate('engineer createdBy');
+//     } else if (role === 'engineer') {
+//       appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer');
+//     } else {
+//       return res.status(403).json({ error: 'Access denied' });
+//     }
+
+//     res.json(appointments);
+//   } catch (error) {
+//     console.error(error); // Log the error for debugging
+//     res.status(500).json({ error: 'Error fetching appointments' });
+//   }
+// };
+
+
+
+
+// Get all appointments (Accountant/Admin)
 exports.getAppointments = async (req, res) => {
   const { role, userId } = req.user;
 
@@ -94,17 +120,37 @@ exports.getAppointments = async (req, res) => {
     if (role === 'accountant' || role === 'admin') {
       appointments = await Appointment.find().populate('engineer createdBy');
     } else if (role === 'engineer') {
-      appointments = await Appointment.find({ engineer: userId }).populate('createdBy');
+      appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer');
     } else {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json(appointments);
+    // Transform appointments to only show required fields
+    const transformedAppointments = appointments.map(appointment => {
+      return {
+        ...appointment.toObject(),
+        engineer: {
+          name: appointment.engineer.name,
+          email: appointment.engineer.email
+        },
+        createdBy: {
+          name: appointment.createdBy.name,
+          email: appointment.createdBy.email
+        },
+        // Remove other fields if needed
+        // You can also choose to exclude document fields here if necessary
+        document: undefined,
+        checklistDocument: undefined
+      };
+    });
+
+    res.json(transformedAppointments);
   } catch (error) {
     console.error(error); // Log the error for debugging
     res.status(500).json({ error: 'Error fetching appointments' });
   }
 };
+
 
 // Export the multer upload instance for use in routes
 exports.upload = upload;
