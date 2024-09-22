@@ -129,16 +129,15 @@ exports.getAppointments = async (req, res) => {
     const transformedAppointments = appointments.map(appointment => {
       return {
         ...appointment.toObject(),
-        engineer: {
+        engineer: appointment.engineer ? {
           name: appointment.engineer.name,
           email: appointment.engineer.email
-        },
-        createdBy: {
+        } : null,
+        createdBy: appointment.createdBy ? {
           name: appointment.createdBy.name,
           email: appointment.createdBy.email
-        },
+        } : null,
         // Remove other fields if needed
-        // You can also choose to exclude document fields here if necessary
         document: undefined,
         checklistDocument: undefined
       };

@@ -4,6 +4,8 @@ const { addToken } = require('../utils/tokenManager');
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 const crypto = require('crypto');
+
+
 exports.register = async (req, res) => {
   const { name, email, password, mobileNumber,address,role } = req.body;
   try {
@@ -17,12 +19,13 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+  
   try {
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '999h' });
     res.json({ token ,role: user.role});
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -76,8 +79,8 @@ exports.forgotPassword = async (req, res) => {
     };
 
     // Log email details for debugging
-    console.log("Sending email to:", user.email);
-    console.log("Email options:", mailOptions);
+    // console.log("Sending email to:", user.email);
+    // console.log("Email options:", mailOptions);
 
     await transporter.sendMail(mailOptions);
     res.status(200).json({ message: 'Password reset email sent' });
