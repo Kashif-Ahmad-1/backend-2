@@ -34,11 +34,22 @@ exports.createAppointment = async (req, res) => {
     expectedServiceDate,
     engineer
   } = req.body;
-  
-  const { userId, role } = req.user;
 
+  const { role } = req.user;
+
+  // Only allow appointments to be created by accountants or engineers
   if (role !== 'accountant' && role !== 'engineer') {
     return res.status(403).json({ error: 'Access denied' });
+  }
+
+  // Check if the selected engineer is valid
+  try {
+    const engineerUser = await User.findById(engineer);
+    if (!engineerUser || engineerUser.role !== 'engineer') {
+      return res.status(400).json({ error: 'Invalid engineer selected' });
+    }
+  } catch (error) {
+    return res.status(400).json({ error: 'Error verifying engineer' });
   }
 
   try {
@@ -71,10 +82,9 @@ exports.createAppointment = async (req, res) => {
       installationDate,
       serviceFrequency,
       expectedServiceDate,
-      engineer: userId,
-      createdBy: userId,
+      engineer, // Keep the engineer ID from the request
+      createdBy: req.user.userId, // Set the user who created the appointment
       document: req.file ? req.file.path : null, // Store file path if uploaded
-      checklistDocument: req.checklistFile ? req.checklistFile.path : null
     });
 
     await appointment.save();
@@ -84,31 +94,6 @@ exports.createAppointment = async (req, res) => {
     res.status(400).json({ error: 'Error creating appointment' });
   }
 };
-
-// Get all appointments (Accountant/Admin)
-// exports.getAppointments = async (req, res) => {
-//   const { role, userId } = req.user;
-
-//   try {
-//     let appointments;
-
-//     if (role === 'accountant' || role === 'admin') {
-//       appointments = await Appointment.find().populate('engineer createdBy');
-//     } else if (role === 'engineer') {
-//       appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer');
-//     } else {
-//       return res.status(403).json({ error: 'Access denied' });
-//     }
-
-//     res.json(appointments);
-//   } catch (error) {
-//     console.error(error); // Log the error for debugging
-//     res.status(500).json({ error: 'Error fetching appointments' });
-//   }
-// };
-
-
-
 
 // Get all appointments (Accountant/Admin)
 exports.getAppointments = async (req, res) => {
@@ -138,8 +123,7 @@ exports.getAppointments = async (req, res) => {
           email: appointment.createdBy.email
         } : null,
         // Remove other fields if needed
-        document: undefined,
-        checklistDocument: undefined
+        document: appointment.document,
       };
     });
 
@@ -149,7 +133,6 @@ exports.getAppointments = async (req, res) => {
     res.status(500).json({ error: 'Error fetching appointments' });
   }
 };
-
 
 // Export the multer upload instance for use in routes
 exports.upload = upload;
