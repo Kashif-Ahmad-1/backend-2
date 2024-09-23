@@ -119,7 +119,11 @@ exports.getAppointments = async (req, res) => {
           email: appointment.createdBy.email,
         } : null,
         document: appointment.document,
-        checklists: appointment.checklists, // Include checklist data
+        // checklists: appointment.checklists, 
+        checklists: appointment.checklists.map(checklist => ({
+          id: checklist._id,
+          ...checklist.toObject(),
+        })),
       };
     });
 
