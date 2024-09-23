@@ -1,8 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const checklistController = require('../controllers/checklistController');
+const express = require("express");
+const { saveChecklist, upload } = require("../controllers/checklistController");
 
-router.post('/', checklistController.saveChecklist);
-router.get('/:clientId', checklistController.getChecklistsByClientId);
+const router = express.Router();
+
+// Route to save checklist and upload PDF
+router.post("/", upload.single('pdf'), saveChecklist);
 
 module.exports = router;

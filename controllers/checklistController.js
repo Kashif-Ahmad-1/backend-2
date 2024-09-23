@@ -1,34 +1,34 @@
-const Checklist = require('../models/Checklist');
+const Checklist = require("../models/Checklist");
+const multer = require("multer");
+const path = require("path");
 
-// Save checklist data
-exports.saveChecklist = async (req, res) => {
-  const { clientInfo, checklist, authorizedSignature } = req.body;
-  
+// File storage configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to file name
+  },
+});
+
+const upload = multer({ storage });
+
+const saveChecklist = async (req, res) => {
   try {
+    const checklistData = JSON.parse(req.body.checklistData);
     const newChecklist = new Checklist({
-      clientInfo,
-      checklist,
-      authorizedSignature,
-      createdAt: new Date(),
+      ...checklistData,
+      pdfPath: req.file.path // Save the PDF path
     });
-    
     await newChecklist.save();
     res.status(201).json(newChecklist);
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ error: 'Error saving checklist' });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Fetch checklists by client ID
-exports.getChecklistsByClientId = async (req, res) => {
-  const { clientId } = req.params;
-  
-  try {
-    const checklists = await Checklist.find({ 'clientInfo.id': clientId });
-    res.json(checklists);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error fetching checklists' });
-  }
+module.exports = {
+  saveChecklist,
+  upload,
 };

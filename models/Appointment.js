@@ -16,7 +16,7 @@ const appointmentSchema = new mongoose.Schema({
   expectedServiceDate: { type: Date, required: true },
   engineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   document: { type: String }, // New field for document upload
-  checklistDocument: { type: String },
+  checklists: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Checklist' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true });
 
