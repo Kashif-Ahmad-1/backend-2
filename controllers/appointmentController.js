@@ -100,9 +100,9 @@ exports.getAppointments = async (req, res) => {
     let appointments;
 
     if (role === 'accountant' || role === 'admin') {
-      appointments = await Appointment.find().populate('engineer createdBy');
+      appointments = await Appointment.find().populate('engineer createdBy checklists'); // Populate checklists
     } else if (role === 'engineer') {
-      appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer');
+      appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer checklists'); // Populate checklists
     } else {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -119,6 +119,7 @@ exports.getAppointments = async (req, res) => {
           email: appointment.createdBy.email,
         } : null,
         document: appointment.document,
+        checklists: appointment.checklists, // Include checklist data
       };
     });
 
