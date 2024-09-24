@@ -93,6 +93,7 @@ exports.createAppointment = async (req, res) => {
 };
 
 // Get all appointments (Accountant/Admin)
+// In your appointment controller
 exports.getAppointments = async (req, res) => {
   const { role, userId } = req.user;
 
@@ -100,9 +101,9 @@ exports.getAppointments = async (req, res) => {
     let appointments;
 
     if (role === 'accountant' || role === 'admin') {
-      appointments = await Appointment.find().populate('engineer createdBy checklists'); // Populate checklists
+      appointments = await Appointment.find().populate('engineer createdBy quotations');
     } else if (role === 'engineer') {
-      appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer checklists'); // Populate checklists
+      appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer quotations');
     } else {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -118,11 +119,10 @@ exports.getAppointments = async (req, res) => {
           name: appointment.createdBy.name,
           email: appointment.createdBy.email,
         } : null,
-        document: appointment.document,
-        // checklists: appointment.checklists, 
-        checklists: appointment.checklists.map(checklist => ({
-          id: checklist._id,
-          ...checklist.toObject(),
+        quotations: appointment.quotations.map(quotation => ({
+          id: quotation._id,
+          quotationData: quotation.quotationData,
+          pdfPath: quotation.pdfPath,
         })),
       };
     });
@@ -154,6 +154,11 @@ exports.editAppointment = async (req, res) => {
     Object.assign(appointment, req.body);
     if (req.file) {
       appointment.document = req.file.path; // Update document if new file uploaded
+    }
+
+    // Update expectedServiceDate if nextServiceDate is provided
+    if (req.body.nextServiceDate) {
+      appointment.expectedServiceDate = req.body.nextServiceDate;
     }
 
     await appointment.save();

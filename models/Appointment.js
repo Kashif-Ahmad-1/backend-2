@@ -14,10 +14,11 @@ const appointmentSchema = new mongoose.Schema({
   installationDate: { type: Date, required: true },
   serviceFrequency: { type: Number, required: true },
   expectedServiceDate: { type: Date, required: true },
+  nextServiceDate: { type: Date }, // New field for next service date
   engineer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   document: { type: String }, // New field for document upload
   checklists: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Checklist' }],
-  // checklistDocument: { type: String },
+  quotations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true });
 
