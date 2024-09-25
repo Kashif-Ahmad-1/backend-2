@@ -2,18 +2,21 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { addToken } = require('../utils/tokenManager');
 const nodemailer = require('nodemailer');
-require('dotenv').config();
 const crypto = require('crypto');
-
+// const fetch = require('node-fetch');
+require('dotenv').config();
+const bcrypt = require('bcrypt');
 
 exports.register = async (req, res) => {
-  const { name, email, password, mobileNumber,address,role } = req.body;
+  const { name, email, password, mobileNumber, address, role } = req.body;
   try {
-    const user = new User({ name, email, password, mobileNumber, address, role });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({ name, email, password: hashedPassword, mobileNumber, address, role });
     await user.save();
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
-    res.status(400).json({ error: 'Error registering user' });
+    console.error(error);
+    res.status(400).json({ error: 'Error registering user: ' + error.message });
   }
 };
 
@@ -22,29 +25,28 @@ exports.login = async (req, res) => {
   
   try {
     const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '999h' });
-    res.json({ token ,role: user.role});
+    res.json({ token, role: user.role });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error(error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 };
 
 // Logout function
 exports.logout = (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1]; // Assuming Bearer token
-
+  const token = req.headers['authorization']?.split(' ')[1];
+  
   if (token) {
-    addToken(token); // Add token to blacklist
+    addToken(token);
     res.status(200).json({ message: 'Logout successful' });
   } else {
     res.status(400).json({ error: 'No token provided' });
   }
 };
-
-
 
 // Forgot password function
 exports.forgotPassword = async (req, res) => {
@@ -78,42 +80,63 @@ exports.forgotPassword = async (req, res) => {
               If you did not request this, please ignore this email.`,
     };
 
-    // Log email details for debugging
-    // console.log("Sending email to:", user.email);
-    // console.log("Email options:", mailOptions);
-
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: 'Password reset email sent' });
+    
+    // Send WhatsApp message
+    const message = `You requested a password reset. Click here to reset: http://localhost:3000/reset/${resetToken}`;
+    await sendWhatsAppMessage(user.mobileNumber, message);
+
+    res.status(200).json({ message: 'Password reset email and WhatsApp message sent' });
   } catch (error) {
-    console.error("Error sending email:", error);
-    // Provide more specific error message
-    if (error.response) {
-      return res.status(500).json({ error: 'Failed to send email: ' + error.response });
-    }
-    res.status(500).json({ error: 'Failed to send email' });
+    console.error("Error sending email or WhatsApp message:", error);
+    res.status(500).json({ error: 'Failed to send message: ' + error.message });
   }
 };
 
-// Reset password function (add this if you want to complete the flow)
+// Function to send WhatsApp message
+const sendWhatsAppMessage = async (mobileNumber, message) => {
+  try {
+    const response = await fetch('https://app.messageautosender.com/api/v1/message/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from('kashif1789:test@123').toString('base64'),
+      },
+      body: JSON.stringify({
+        receiverMobileNo: mobileNumber,
+        message: [message],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send WhatsApp message');
+    }
+  } catch (error) {
+    console.error('Error sending WhatsApp message:', error);
+    throw error; // rethrow to handle it in the main function
+  }
+};
+
+// Reset password function
 exports.resetPassword = async (req, res) => {
   const { token, newPassword } = req.body;
   try {
     const user = await User.findOne({
       resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() }
+      resetPasswordExpires: { $gt: Date.now() },
     });
     if (!user) {
       return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
     }
 
-    user.password = newPassword; // Hash password before saving
+    user.password = await bcrypt.hash(newPassword, 10); // Hash password before saving
     user.resetPasswordToken = undefined; // Clear the reset token
     user.resetPasswordExpires = undefined; // Clear the expiration
     await user.save();
     res.status(200).json({ message: 'Password has been reset successfully.' });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error(error);
+    res.status(500).json({ error: 'Server error: ' + error.message });
   }
 };
-
-

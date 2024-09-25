@@ -12,6 +12,7 @@ const checklistSchema = new mongoose.Schema({
   appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
   checklist: Array,
   refrigeratorList: Array,
+  invoiceNo: String,
   pdfPath: String, // Path to the uploaded PDF
   generatedOn: { type: Date, default: Date.now },
 });
