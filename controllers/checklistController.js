@@ -41,6 +41,7 @@ const saveChecklist = async (req, res) => {
       appointmentId,
       invoiceNo,
       pdfPath: req.file ? req.file.path : null,
+      createdBy: req.user.userId,
     });
 
     // Save the checklist to the database
@@ -64,7 +65,7 @@ const saveChecklist = async (req, res) => {
 
 const getAllChecklists = async (req, res) => {
   try {
-    const checklists = await Checklist.find().populate('appointmentId'); // Optionally populate appointment data
+    const checklists = await Checklist.find({ createdBy: req.user.userId }).populate('appointmentId'); // Optionally populate appointment data
     res.status(200).json(checklists);
   } catch (error) {
     console.error('Error fetching checklists:', error);
