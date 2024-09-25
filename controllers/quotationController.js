@@ -19,7 +19,7 @@ const upload = multer({ storage });
 const saveQuotation = async (req, res) => {
   try {
     if (!req.body.quotationData) {
-    //   console.log('Quotation data is missing.');
+      console.log('Quotation data is missing.');
       return res.status(400).json({ message: 'Quotation data is required.' });
     }
 
@@ -47,12 +47,12 @@ const saveQuotation = async (req, res) => {
 
     // Save the quotation to the database
     const savedQuotation = await newQuotation.save();
-    // console.log('Saved quotation:', savedQuotation);
+    console.log('Saved quotation:', savedQuotation);
 
     // Update the appointment to link the quotation
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
-      // console.log('Appointment not found for ID:', appointmentId);
+      console.log('Appointment not found for ID:', appointmentId);
       return res.status(404).json({ message: "Appointment not found." });
     }
 
