@@ -3,7 +3,7 @@ const path = require("path");
 const Appointment = require("../models/Appointment");
 const User = require("../models/User");
 const Company = require("../models/Company");
-// const Quotation = require('../models/Quotation')
+
 // Create an instance of multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -15,6 +15,23 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+// Function to generate a unique invoice number
+const generateInvoiceNumber = async () => {
+  let invoiceNumber;
+  let isUnique = false;
+
+  while (!isUnique) {
+    // Generate a random invoice number (you can customize this format)
+    invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+    
+    // Check if the invoice number is unique
+    const existingAppointment = await Appointment.findOne({ invoiceNumber });
+    isUnique = !existingAppointment; // If it doesn't exist, it's unique
+  }
+
+  return invoiceNumber;
+};
 
 // Accountant creates an appointment
 exports.createAppointment = async (req, res) => {
@@ -65,6 +82,9 @@ exports.createAppointment = async (req, res) => {
       await company.save();
     }
 
+    // Generate a unique invoice number
+    const invoiceNumber = await generateInvoiceNumber();
+
     const appointment = new Appointment({
       clientName,
       clientAddress,
@@ -82,6 +102,7 @@ exports.createAppointment = async (req, res) => {
       engineer,
       createdBy: req.user.userId,
       document: req.file ? req.file.path : null,
+      invoiceNumber, // Add the generated invoice number
     });
 
     await appointment.save();
@@ -92,8 +113,7 @@ exports.createAppointment = async (req, res) => {
   }
 };
 
-// Get all appointments (Accountant/Admin)
-// In your appointment controller
+
 // Get all appointments (Accountant/Admin)
 exports.getAppointments = async (req, res) => {
   const { role, userId } = req.user;
@@ -103,10 +123,10 @@ exports.getAppointments = async (req, res) => {
 
     if (role === "accountant" || role === "admin") {
       appointments = await Appointment.find()
-        .populate("engineer createdBy checklists"); // Populate checklists too
+        .populate("engineer createdBy checklists");
     } else if (role === "engineer") {
       appointments = await Appointment.find({ engineer: userId })
-        .populate("createdBy engineer checklists"); // Populate checklists for engineer
+        .populate("createdBy engineer checklists");
     } else {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -132,7 +152,6 @@ exports.getAppointments = async (req, res) => {
           invoiceNo: checklist.invoiceNo,
           pdfPath: checklist.pdfPath,
           generatedOn: checklist.generatedOn,
-          // Add any other checklist fields you want to include
         })),
       };
     });
@@ -143,7 +162,6 @@ exports.getAppointments = async (req, res) => {
     res.status(500).json({ error: "Error fetching appointments" });
   }
 };
-
 
 // Edit an appointment
 exports.editAppointment = async (req, res) => {
