@@ -16,6 +16,7 @@ const quotationSchema = new mongoose.Schema({
   pdfPath: String, // Path to the uploaded PDF
   status: { type: Boolean, default: false },
   generatedOn: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 });
 
 module.exports = mongoose.model("Quotation", quotationSchema);

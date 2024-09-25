@@ -36,27 +36,26 @@ const saveQuotation = async (req, res) => {
       return res.status(400).json({ message: 'Invalid JSON format for quotation data.' });
     }
 
-    // Create a new Quotation instance
+    // Create a new Quotation instance, with the `createdBy` set to the authenticated engineer's ID
     const newQuotation = new Quotation({
       clientInfo,
       appointmentId,
       quotationNo,
       pdfPath: req.file ? req.file.path : null,
-      status: false, // Set status to false when creating the quotation
+      status: false, 
+      createdBy: req.user.userId // Assuming userId is stored in the JWT
     });
 
-    // Save the quotation to the database
     const savedQuotation = await newQuotation.save();
     console.log('Saved quotation:', savedQuotation);
 
-    // Update the appointment to link the quotation
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
       console.log('Appointment not found for ID:', appointmentId);
       return res.status(404).json({ message: "Appointment not found." });
     }
 
-    appointment.quotations.push(savedQuotation._id); // Add quotation ID to appointment
+    appointment.quotations.push(savedQuotation._id);
     await appointment.save();
 
     res.status(201).json({ quotation: savedQuotation, appointment });
@@ -66,15 +65,17 @@ const saveQuotation = async (req, res) => {
   }
 };
 
+
 const getAllQuotations = async (req, res) => {
-    try {
-      const quotations = await Quotation.find().populate('appointmentId'); // Optionally populate appointment data
-      res.status(200).json(quotations);
-    } catch (error) {
-      console.error('Error fetching quotations:', error);
-      res.status(500).json({ message: error.message });
-    }
-  };
+  try {
+    const quotations = await Quotation.find({ createdBy: req.user.userId }).populate('appointmentId');
+    res.status(200).json(quotations);
+  } catch (error) {
+    console.error('Error fetching quotations:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
   
 
   const editQuotation = async (req, res) => {
