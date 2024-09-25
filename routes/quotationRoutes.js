@@ -1,12 +1,14 @@
-const express = require('express');
-const { createQuotation, getQuotationsForAppointment, upload } = require('../controllers/quotationController');
+const express = require("express");
+const { saveQuotation, upload, getAllQuotations,editQuotation,updateQuotationStatus } = require("../controllers/quotationController");
 
 const router = express.Router();
 
-// Route to create a quotation
-router.post('/', upload.single('fileField'), createQuotation);
+// Route to save quotation and upload PDF
+router.post("/", upload.single('pdf'), saveQuotation);
 
-// Route to get all quotations for a specific appointment
-router.get('/:appointmentId', getQuotationsForAppointment);
+// Route to get all quotations
+router.get("/", getAllQuotations); // Add this line
+router.put('/:id', editQuotation);
+router.put('/:id/status', updateQuotationStatus);
 
 module.exports = router;

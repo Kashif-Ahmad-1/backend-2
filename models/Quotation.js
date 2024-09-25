@@ -1,9 +1,21 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
+// Checklist Document Model
 const quotationSchema = new mongoose.Schema({
-  appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment', required: true },
-  quotationData: { type: Object, required: true },
-  pdfPath: { type: String, required: true },
-}, { timestamps: true });
+  clientInfo: {
+    name: String,
+    contactPerson: String,
+    phone: String,
+    address: String,
+    engineer: String,
+    
+  
+  },
+  appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
+  quotationNo: String,
+  pdfPath: String, // Path to the uploaded PDF
+  status: { type: Boolean, default: false },
+  generatedOn: { type: Date, default: Date.now },
+});
 
-module.exports = mongoose.model('Quotation', quotationSchema);
+module.exports = mongoose.model("Quotation", quotationSchema);

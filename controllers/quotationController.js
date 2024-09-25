@@ -1,63 +1,128 @@
-const multer = require('multer');
-const path = require('path');
-const Quotation = require('../models/Quotation');
-const Appointment = require('../models/Appointment');
+const Quotation = require("../models/Quotation");
+const multer = require("multer");
+const path = require("path");
+const Appointment = require("../models/Appointment");
 
-
-// Setup multer for file uploads
+// File storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to file name
   },
 });
 
 const upload = multer({ storage });
 
-// Create a quotation
-exports.createQuotation = async (req, res) => {
+// Save quotation and link it to an existing appointment
+const saveQuotation = async (req, res) => {
   try {
     if (!req.body.quotationData) {
-      return res.status(400).json({ error: 'Quotation data is required' });
+    //   console.log('Quotation data is missing.');
+      return res.status(400).json({ message: 'Quotation data is required.' });
     }
 
-    const { appointmentId, quotationData } = JSON.parse(req.body.quotationData);
-    const pdfPath = req.file.path;
+    let appointmentId, clientInfo, quotationNo;
 
-    // Check if the appointment exists
-    const appointment = await Appointment.findById(appointmentId);
-    if (!appointment) {
-      return res.status(404).json({ error: 'Appointment not found' });
+    // Attempt to parse quotationData
+    try {
+      const { appointmentId: id, clientInfo: info, quotationNo: string } = JSON.parse(req.body.quotationData);
+      appointmentId = id;
+      clientInfo = info;
+      quotationNo = string;
+    } catch (jsonError) {
+      console.log('JSON parsing error:', jsonError);
+      return res.status(400).json({ message: 'Invalid JSON format for quotation data.' });
     }
 
+    // Create a new Quotation instance
     const newQuotation = new Quotation({
+      clientInfo,
       appointmentId,
-      quotationData,
-      pdfPath,
+      quotationNo,
+      pdfPath: req.file ? req.file.path : null,
+      status: false, // Set status to false when creating the quotation
     });
 
-    await newQuotation.save();
-    res.status(201).json({ message: 'Quotation created successfully', quotation: newQuotation });
+    // Save the quotation to the database
+    const savedQuotation = await newQuotation.save();
+    // console.log('Saved quotation:', savedQuotation);
+
+    // Update the appointment to link the quotation
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) {
+      // console.log('Appointment not found for ID:', appointmentId);
+      return res.status(404).json({ message: "Appointment not found." });
+    }
+
+    appointment.quotations.push(savedQuotation._id); // Add quotation ID to appointment
+    await appointment.save();
+
+    res.status(201).json({ quotation: savedQuotation, appointment });
   } catch (error) {
-    console.error('Error creating quotation:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Error saving quotation:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get all quotations for an appointment
-exports.getQuotationsForAppointment = async (req, res) => {
-  const { appointmentId } = req.params;
+const getAllQuotations = async (req, res) => {
+    try {
+      const quotations = await Quotation.find().populate('appointmentId'); // Optionally populate appointment data
+      res.status(200).json(quotations);
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+      res.status(500).json({ message: error.message });
+    }
+  };
+  
 
-  try {
-    const quotations = await Quotation.find({ appointmentId });
-    res.json(quotations);
-  } catch (error) {
-    console.error('Error fetching quotations:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
+  const editQuotation = async (req, res) => {
+    try {
+      const { id } = req.params; // Get the ID from the URL parameters
+      const { clientInfo, appointmentId, quotationNo } = req.body; // Extract data from the request body
+  
+      // Find the quotation by ID and update it
+      const updatedQuotation = await Quotation.findByIdAndUpdate(
+        id,
+        { clientInfo, appointmentId, quotationNo },
+        { new: true } // Return the updated document
+      );
+  
+      if (!updatedQuotation) {
+        return res.status(404).json({ message: 'Quotation not found.' });
+      }
+  
+      res.status(200).json({ quotation: updatedQuotation });
+    } catch (error) {
+      console.error('Error editing quotation:', error);
+      res.status(500).json({ message: error.message });
+    }
+  };
 
-// Export the multer upload instance for use in routes
-exports.upload = upload;
+  const updateQuotationStatus = async (req, res) => {
+    try {
+      const { id } = req.params; // Get the ID from the URL parameters
+      const quotation = await Quotation.findById(id);
+  
+      if (!quotation) {
+        return res.status(404).json({ message: 'Quotation not found.' });
+      }
+  
+      // Toggle the status
+      quotation.status = !quotation.status; 
+      await quotation.save();
+  
+      res.status(200).json({ message: 'Quotation status updated.', quotation });
+    } catch (error) {
+      console.error('Error updating quotation status:', error);
+      res.status(500).json({ message: error.message });
+    }
+  };
+  module.exports = {
+    saveQuotation,
+    upload,
+    getAllQuotations,
+    editQuotation,
+    updateQuotationStatus // Add this line to export the new function
+  };

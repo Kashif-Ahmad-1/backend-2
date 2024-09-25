@@ -1,13 +1,13 @@
-const multer = require('multer');
-const path = require('path');
-const Appointment = require('../models/Appointment');
-const User = require('../models/User');
-const Company = require('../models/Company');
-
+const multer = require("multer");
+const path = require("path");
+const Appointment = require("../models/Appointment");
+const User = require("../models/User");
+const Company = require("../models/Company");
+// const Quotation = require('../models/Quotation')
 // Create an instance of multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Ensure this folder exists
+    cb(null, "uploads/"); // Ensure this folder exists
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
@@ -38,18 +38,18 @@ exports.createAppointment = async (req, res) => {
   const { role } = req.user;
 
   // Only allow appointments to be created by accountants or engineers
-  if (role !== 'accountant' && role !== 'engineer') {
-    return res.status(403).json({ error: 'Access denied' });
+  if (role !== "accountant" && role !== "engineer") {
+    return res.status(403).json({ error: "Access denied" });
   }
 
   // Check if the selected engineer is valid
   try {
     const engineerUser = await User.findById(engineer);
-    if (!engineerUser || engineerUser.role !== 'engineer') {
-      return res.status(400).json({ error: 'Invalid engineer selected' });
+    if (!engineerUser || engineerUser.role !== "engineer") {
+      return res.status(400).json({ error: "Invalid engineer selected" });
     }
   } catch (error) {
-    return res.status(400).json({ error: 'Error verifying engineer' });
+    return res.status(400).json({ error: "Error verifying engineer" });
   }
 
   try {
@@ -88,7 +88,7 @@ exports.createAppointment = async (req, res) => {
     res.status(201).json(appointment);
   } catch (error) {
     console.error(error);
-    res.status(400).json({ error: 'Error creating appointment' });
+    res.status(400).json({ error: "Error creating appointment" });
   }
 };
 
@@ -100,37 +100,38 @@ exports.getAppointments = async (req, res) => {
   try {
     let appointments;
 
-    if (role === 'accountant' || role === 'admin') {
-      appointments = await Appointment.find().populate('engineer createdBy quotations');
-    } else if (role === 'engineer') {
-      appointments = await Appointment.find({ engineer: userId }).populate('createdBy engineer quotations');
+    if (role === "accountant" || role === "admin") {
+      appointments = await Appointment.find().populate("engineer createdBy");
+    } else if (role === "engineer") {
+      appointments = await Appointment.find({ engineer: userId }).populate(
+        "createdBy engineer"
+      );
     } else {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: "Access denied" });
     }
 
-    const transformedAppointments = appointments.map(appointment => {
+    const transformedAppointments = appointments.map((appointment) => {
       return {
         ...appointment.toObject(),
-        engineer: appointment.engineer ? {
-          name: appointment.engineer.name,
-          email: appointment.engineer.email,
-        } : null,
-        createdBy: appointment.createdBy ? {
-          name: appointment.createdBy.name,
-          email: appointment.createdBy.email,
-        } : null,
-        quotations: appointment.quotations.map(quotation => ({
-          id: quotation._id,
-          quotationData: quotation.quotationData,
-          pdfPath: quotation.pdfPath,
-        })),
+        engineer: appointment.engineer
+          ? {
+              name: appointment.engineer.name,
+              email: appointment.engineer.email,
+            }
+          : null,
+        createdBy: appointment.createdBy
+          ? {
+              name: appointment.createdBy.name,
+              email: appointment.createdBy.email,
+            }
+          : null,
       };
     });
 
     res.json(transformedAppointments);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error fetching appointments' });
+    res.status(500).json({ error: "Error fetching appointments" });
   }
 };
 
@@ -140,14 +141,14 @@ exports.editAppointment = async (req, res) => {
   const { appointmentId } = req.params;
 
   // Check if user has permission to edit
-  if (role !== 'admin' && role !== 'engineer' && role !== 'accountant') {
-    return res.status(403).json({ error: 'Access denied' });
+  if (role !== "admin" && role !== "engineer" && role !== "accountant") {
+    return res.status(403).json({ error: "Access denied" });
   }
 
   try {
     const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
-      return res.status(404).json({ error: 'Appointment not found' });
+      return res.status(404).json({ error: "Appointment not found" });
     }
 
     // Update fields
@@ -165,7 +166,7 @@ exports.editAppointment = async (req, res) => {
     res.json(appointment);
   } catch (error) {
     console.error(error);
-    res.status(400).json({ error: 'Error updating appointment' });
+    res.status(400).json({ error: "Error updating appointment" });
   }
 };
 
@@ -175,20 +176,20 @@ exports.deleteAppointment = async (req, res) => {
   const { appointmentId } = req.params;
 
   // Check if user has permission to delete
-  if (role !== 'admin' && role !== 'engineer' && role !== 'accountant') {
-    return res.status(403).json({ error: 'Access denied' });
+  if (role !== "admin" && role !== "engineer" && role !== "accountant") {
+    return res.status(403).json({ error: "Access denied" });
   }
 
   try {
     const appointment = await Appointment.findByIdAndDelete(appointmentId);
     if (!appointment) {
-      return res.status(404).json({ error: 'Appointment not found' });
+      return res.status(404).json({ error: "Appointment not found" });
     }
 
     res.status(204).send(); // No content response
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error deleting appointment' });
+    res.status(500).json({ error: "Error deleting appointment" });
   }
 };
 
