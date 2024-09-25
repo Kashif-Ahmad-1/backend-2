@@ -65,7 +65,10 @@ const saveChecklist = async (req, res) => {
 
 const getAllChecklists = async (req, res) => {
   try {
-    const checklists = await Checklist.find({ createdBy: req.user.userId }).populate('appointmentId'); // Optionally populate appointment data
+    const checklists = await Checklist.find({ createdBy: req.user.userId })
+      .populate('appointmentId') // Optionally populate appointment data
+      .sort({ generatedOn: -1 }); // Sort by generatedOn in descending order
+
     res.status(200).json(checklists);
   } catch (error) {
     console.error('Error fetching checklists:', error);
@@ -121,10 +124,37 @@ const deleteChecklist = async (req, res) => {
   }
 };
 
+
+const downloadChecklist = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the checklist ID from the URL parameters
+
+    // Find the checklist by ID
+    const checklist = await Checklist.findById(id);
+    if (!checklist || !checklist.pdfPath) {
+      return res.status(404).json({ message: 'Checklist not found or no file available.' });
+    }
+
+    // Set the path to the file
+    const filePath = path.join(__dirname, '..', checklist.pdfPath);
+
+    // Send the file to the client
+    res.download(filePath, (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).json({ message: 'Error downloading the file.' });
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching checklist for download:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 module.exports = {
   saveChecklist,
   upload,
   getAllChecklists,
   editChecklist,
-  deleteChecklist, // Export the new function
+  deleteChecklist, 
+  downloadChecklist, // Export the new function
 };

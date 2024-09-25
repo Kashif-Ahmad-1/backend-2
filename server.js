@@ -33,19 +33,8 @@ app.use('/api/companies', companyRoutes);
 
 app.use("/api/checklist", checklistRoutes);
 app.use("/api/quotations", quotationRoutes);
-
-
-
-
-
-
-
 // Serve static files from the "uploads" directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-
-
-
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);

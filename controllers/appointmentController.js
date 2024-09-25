@@ -94,6 +94,7 @@ exports.createAppointment = async (req, res) => {
 
 // Get all appointments (Accountant/Admin)
 // In your appointment controller
+// Get all appointments (Accountant/Admin)
 exports.getAppointments = async (req, res) => {
   const { role, userId } = req.user;
 
@@ -101,11 +102,11 @@ exports.getAppointments = async (req, res) => {
     let appointments;
 
     if (role === "accountant" || role === "admin") {
-      appointments = await Appointment.find().populate("engineer createdBy");
+      appointments = await Appointment.find()
+        .populate("engineer createdBy checklists"); // Populate checklists too
     } else if (role === "engineer") {
-      appointments = await Appointment.find({ engineer: userId }).populate(
-        "createdBy engineer"
-      );
+      appointments = await Appointment.find({ engineer: userId })
+        .populate("createdBy engineer checklists"); // Populate checklists for engineer
     } else {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -125,6 +126,14 @@ exports.getAppointments = async (req, res) => {
               email: appointment.createdBy.email,
             }
           : null,
+        checklists: appointment.checklists.map((checklist) => ({
+          id: checklist._id,
+          clientInfo: checklist.clientInfo,
+          invoiceNo: checklist.invoiceNo,
+          pdfPath: checklist.pdfPath,
+          generatedOn: checklist.generatedOn,
+          // Add any other checklist fields you want to include
+        })),
       };
     });
 
@@ -134,6 +143,7 @@ exports.getAppointments = async (req, res) => {
     res.status(500).json({ error: "Error fetching appointments" });
   }
 };
+
 
 // Edit an appointment
 exports.editAppointment = async (req, res) => {
