@@ -22,11 +22,11 @@ const saveChecklist = async (req, res) => {
       return res.status(400).json({ message: 'Checklist data is required.' });
     }
 
-    let appointmentId, clientInfo,invoiceNo,documentNumber;
+    let appointmentId, clientInfo, invoiceNo, documentNumber;
 
     // Attempt to parse checklistData
     try {
-      const { appointmentId: id, clientInfo: info, invoiceNo:string, documentNumber: number } = JSON.parse(req.body.checklistData);
+      const { appointmentId: id, clientInfo: info, invoiceNo: string, documentNumber: number } = JSON.parse(req.body.checklistData);
       appointmentId = id;
       clientInfo = info;
       invoiceNo = string;
@@ -67,7 +67,11 @@ const saveChecklist = async (req, res) => {
 
 const getAllChecklists = async (req, res) => {
   try {
-    const checklists = await Checklist.find({ createdBy: req.user.userId })
+    // Check if the user is an admin
+    const isAdmin = req.user.role === 'admin';
+
+    // If admin, fetch all checklists, otherwise fetch only those created by the user
+    const checklists = await Checklist.find(isAdmin ? {} : { createdBy: req.user.userId })
       .populate('appointmentId') // Optionally populate appointment data
       .sort({ generatedOn: -1 }); // Sort by generatedOn in descending order
 
@@ -81,12 +85,23 @@ const getAllChecklists = async (req, res) => {
 const editChecklist = async (req, res) => {
   try {
     const { id } = req.params; // Get the ID from the URL parameters
-    const { clientInfo, appointmentId } = req.body; // Extract data from the request body
+    const { clientInfo, appointmentId, invoiceNo, documentNumber } = req.body; // Extract data from the request body
+
+
+    // Check if the user is an admin or the creator of the checklist
+    const isAdmin = req.user.role === 'admin';
+    const checklist = await Checklist.findById(id);
+    if (!checklist) {
+      return res.status(404).json({ message: 'Checklist not found.' });
+    }
+    if (!isAdmin && checklist.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You do not have permission to edit this checklist.' });
+    }
 
     // Find the checklist by ID and update it
     const updatedChecklist = await Checklist.findByIdAndUpdate(
       id,
-      { clientInfo, appointmentId,invoiceNo,documentNumber },
+      { clientInfo, appointmentId, invoiceNo, documentNumber },
       { new: true } // Return the updated document
     );
 
@@ -106,11 +121,20 @@ const deleteChecklist = async (req, res) => {
   try {
     const { id } = req.params; // Get the ID from the URL parameters
 
-    // Find and delete the checklist by ID
-    const deletedChecklist = await Checklist.findByIdAndDelete(id);
-    if (!deletedChecklist) {
+    // Find the checklist by ID
+    const checklist = await Checklist.findById(id);
+    if (!checklist) {
       return res.status(404).json({ message: 'Checklist not found.' });
     }
+
+    // Check if the user is an admin or the creator of the checklist
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin && checklist.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this checklist.' });
+    }
+
+    // Find and delete the checklist by ID
+    const deletedChecklist = await Checklist.findByIdAndDelete(id);
 
     // Optionally, update the related appointment
     const appointment = await Appointment.findById(deletedChecklist.appointmentId);
@@ -125,7 +149,6 @@ const deleteChecklist = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 const downloadChecklist = async (req, res) => {
   try {
@@ -152,7 +175,6 @@ const downloadChecklist = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 module.exports = {
   saveChecklist,

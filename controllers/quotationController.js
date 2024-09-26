@@ -69,7 +69,8 @@ const saveQuotation = async (req, res) => {
 
 const getAllQuotations = async (req, res) => {
   try {
-    const quotations = await Quotation.find({ createdBy: req.user.userId }).populate('appointmentId');
+    const isAdmin = req.user.role === 'admin';
+    const quotations = await Quotation.find(isAdmin ? {} : { createdBy: req.user.userId }).populate('appointmentId');
     res.status(200).json(quotations);
   } catch (error) {
     console.error('Error fetching quotations:', error);
@@ -81,6 +82,17 @@ const editQuotation = async (req, res) => {
   try {
     const { id } = req.params; // Get the ID from the URL parameters
     const { clientInfo, appointmentId, quotationNo, quotationAmount } = req.body; // Extract data from the request body
+
+    const isAdmin = req.user.role === 'admin';
+    const quotation = await Quotation.findById(id);
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found.' });
+    }
+
+    // Check if the user is an admin or the creator of the quotation
+    if (!isAdmin && quotation.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You do not have permission to edit this quotation.' });
+    }
 
     // Find the quotation by ID and update it
     const updatedQuotation = await Quotation.findByIdAndUpdate(
@@ -109,6 +121,12 @@ const updateQuotationStatus = async (req, res) => {
       return res.status(404).json({ message: 'Quotation not found.' });
     }
 
+    // Check if the user is an admin or the creator of the quotation
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin && quotation.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You do not have permission to update this quotation status.' });
+    }
+
     // Toggle the status
     quotation.status = !quotation.status; 
     await quotation.save();
@@ -120,10 +138,43 @@ const updateQuotationStatus = async (req, res) => {
   }
 };
 
+const deleteQuotation = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the ID from the URL parameters
+    const quotation = await Quotation.findById(id);
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found.' });
+    }
+
+    // Check if the user is an admin or the creator of the quotation
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin && quotation.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You do not have permission to delete this quotation.' });
+    }
+
+    // Delete the quotation
+    await Quotation.findByIdAndDelete(id);
+
+    // Optionally, update the related appointment
+    const appointment = await Appointment.findById(quotation.appointmentId);
+    if (appointment) {
+      appointment.quotations.pull(quotation._id);
+      await appointment.save();
+    }
+
+    res.status(200).json({ message: 'Quotation deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting quotation:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   saveQuotation,
   upload,
   getAllQuotations,
   editQuotation,
-  updateQuotationStatus // Add this line to export the new function
+  updateQuotationStatus,
+  deleteQuotation, // Export the delete function
 };
