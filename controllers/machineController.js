@@ -2,7 +2,7 @@ const Machine = require('../models/Machine');
 
 // Add a new machine
 exports.addMachine = async (req, res) => {
-  const { name, quantity } = req.body;
+  const { name, quantity, modelNo, partNo } = req.body;
   const { role } = req.user;
 
   if (role !== 'admin' && role !== 'accountant') {
@@ -10,7 +10,7 @@ exports.addMachine = async (req, res) => {
   }
 
   try {
-    const machine = new Machine({ name, quantity });
+    const machine = new Machine({ name, quantity ,modelNo, partNo});
     await machine.save();
     res.status(201).json(machine);
   } catch (error) {

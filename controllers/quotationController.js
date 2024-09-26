@@ -23,14 +23,15 @@ const saveQuotation = async (req, res) => {
       return res.status(400).json({ message: 'Quotation data is required.' });
     }
 
-    let appointmentId, clientInfo, quotationNo;
+    let appointmentId, clientInfo, quotationNo, quotationAmount;
 
     // Attempt to parse quotationData
     try {
-      const { appointmentId: id, clientInfo: info, quotationNo: string } = JSON.parse(req.body.quotationData);
+      const { appointmentId: id, clientInfo: info, quotationNo: string, quotationAmount: amount } = JSON.parse(req.body.quotationData);
       appointmentId = id;
       clientInfo = info;
       quotationNo = string;
+      quotationAmount = amount; // Assign quotationAmount
     } catch (jsonError) {
       console.log('JSON parsing error:', jsonError);
       return res.status(400).json({ message: 'Invalid JSON format for quotation data.' });
@@ -41,6 +42,7 @@ const saveQuotation = async (req, res) => {
       clientInfo,
       appointmentId,
       quotationNo,
+      quotationAmount, // Include quotationAmount here
       pdfPath: req.file ? req.file.path : null,
       status: false, 
       createdBy: req.user.userId // Assuming userId is stored in the JWT
@@ -65,7 +67,6 @@ const saveQuotation = async (req, res) => {
   }
 };
 
-
 const getAllQuotations = async (req, res) => {
   try {
     const quotations = await Quotation.find({ createdBy: req.user.userId }).populate('appointmentId');
@@ -76,54 +77,53 @@ const getAllQuotations = async (req, res) => {
   }
 };
 
-  
+const editQuotation = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the ID from the URL parameters
+    const { clientInfo, appointmentId, quotationNo, quotationAmount } = req.body; // Extract data from the request body
 
-  const editQuotation = async (req, res) => {
-    try {
-      const { id } = req.params; // Get the ID from the URL parameters
-      const { clientInfo, appointmentId, quotationNo } = req.body; // Extract data from the request body
-  
-      // Find the quotation by ID and update it
-      const updatedQuotation = await Quotation.findByIdAndUpdate(
-        id,
-        { clientInfo, appointmentId, quotationNo },
-        { new: true } // Return the updated document
-      );
-  
-      if (!updatedQuotation) {
-        return res.status(404).json({ message: 'Quotation not found.' });
-      }
-  
-      res.status(200).json({ quotation: updatedQuotation });
-    } catch (error) {
-      console.error('Error editing quotation:', error);
-      res.status(500).json({ message: error.message });
-    }
-  };
+    // Find the quotation by ID and update it
+    const updatedQuotation = await Quotation.findByIdAndUpdate(
+      id,
+      { clientInfo, appointmentId, quotationNo, quotationAmount }, // Include quotationAmount in update
+      { new: true } // Return the updated document
+    );
 
-  const updateQuotationStatus = async (req, res) => {
-    try {
-      const { id } = req.params; // Get the ID from the URL parameters
-      const quotation = await Quotation.findById(id);
-  
-      if (!quotation) {
-        return res.status(404).json({ message: 'Quotation not found.' });
-      }
-  
-      // Toggle the status
-      quotation.status = !quotation.status; 
-      await quotation.save();
-  
-      res.status(200).json({ message: 'Quotation status updated.', quotation });
-    } catch (error) {
-      console.error('Error updating quotation status:', error);
-      res.status(500).json({ message: error.message });
+    if (!updatedQuotation) {
+      return res.status(404).json({ message: 'Quotation not found.' });
     }
-  };
-  module.exports = {
-    saveQuotation,
-    upload,
-    getAllQuotations,
-    editQuotation,
-    updateQuotationStatus // Add this line to export the new function
-  };
+
+    res.status(200).json({ quotation: updatedQuotation });
+  } catch (error) {
+    console.error('Error editing quotation:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateQuotationStatus = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the ID from the URL parameters
+    const quotation = await Quotation.findById(id);
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found.' });
+    }
+
+    // Toggle the status
+    quotation.status = !quotation.status; 
+    await quotation.save();
+
+    res.status(200).json({ message: 'Quotation status updated.', quotation });
+  } catch (error) {
+    console.error('Error updating quotation status:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = {
+  saveQuotation,
+  upload,
+  getAllQuotations,
+  editQuotation,
+  updateQuotationStatus // Add this line to export the new function
+};

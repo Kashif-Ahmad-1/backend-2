@@ -20,7 +20,7 @@ const appointmentSchema = new mongoose.Schema({
   checklists: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Checklist' }],
   quotations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  invoiceNumber: { type: String, unique: true, required: true }, // New unique field for invoice number
+  invoiceNumber: { type: String, required: true }, // New unique field for invoice number
 }, { timestamps: true });
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

@@ -17,21 +17,21 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Function to generate a unique invoice number
-const generateInvoiceNumber = async () => {
-  let invoiceNumber;
-  let isUnique = false;
+// const generateInvoiceNumber = async () => {
+//   let invoiceNumber;
+//   let isUnique = false;
 
-  while (!isUnique) {
-    // Generate a random invoice number (you can customize this format)
-    invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
+//   while (!isUnique) {
+//     // Generate a random invoice number (you can customize this format)
+//     invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
     
-    // Check if the invoice number is unique
-    const existingAppointment = await Appointment.findOne({ invoiceNumber });
-    isUnique = !existingAppointment; // If it doesn't exist, it's unique
-  }
+//     // Check if the invoice number is unique
+//     const existingAppointment = await Appointment.findOne({ invoiceNumber });
+//     isUnique = !existingAppointment; // If it doesn't exist, it's unique
+//   }
 
-  return invoiceNumber;
-};
+//   return invoiceNumber;
+// };
 
 // Accountant creates an appointment
 exports.createAppointment = async (req, res) => {
@@ -50,6 +50,7 @@ exports.createAppointment = async (req, res) => {
     serviceFrequency,
     expectedServiceDate,
     engineer,
+    invoiceNumber,
   } = req.body;
 
   const { role } = req.user;
@@ -83,7 +84,7 @@ exports.createAppointment = async (req, res) => {
     }
 
     // Generate a unique invoice number
-    const invoiceNumber = await generateInvoiceNumber();
+    // const invoiceNumber = await generateInvoiceNumber();
 
     const appointment = new Appointment({
       clientName,
@@ -123,10 +124,10 @@ exports.getAppointments = async (req, res) => {
 
     if (role === "accountant" || role === "admin") {
       appointments = await Appointment.find()
-        .populate("engineer createdBy checklists");
+        .populate("engineer createdBy checklists quotations");
     } else if (role === "engineer") {
       appointments = await Appointment.find({ engineer: userId })
-        .populate("createdBy engineer checklists");
+        .populate("createdBy engineer checklists quotations");
     } else {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -152,6 +153,14 @@ exports.getAppointments = async (req, res) => {
           invoiceNo: checklist.invoiceNo,
           pdfPath: checklist.pdfPath,
           generatedOn: checklist.generatedOn,
+        })),
+        quotations: appointment.quotations.map((quotation) => ({
+          id: quotation._id,
+          clientInfo: quotation.clientInfo,
+          quotationNo: quotation.quotationNo,
+          quotationAmount: quotation.quotationAmount,
+          pdfPath: quotation.pdfPath,
+         
         })),
       };
     });

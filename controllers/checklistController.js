@@ -22,14 +22,15 @@ const saveChecklist = async (req, res) => {
       return res.status(400).json({ message: 'Checklist data is required.' });
     }
 
-    let appointmentId, clientInfo,invoiceNo;
+    let appointmentId, clientInfo,invoiceNo,documentNumber;
 
     // Attempt to parse checklistData
     try {
-      const { appointmentId: id, clientInfo: info, invoiceNo:string } = JSON.parse(req.body.checklistData);
+      const { appointmentId: id, clientInfo: info, invoiceNo:string, documentNumber: number } = JSON.parse(req.body.checklistData);
       appointmentId = id;
       clientInfo = info;
       invoiceNo = string;
+      documentNumber = number;
     } catch (jsonError) {
       console.log('JSON parsing error:', jsonError);
       return res.status(400).json({ message: 'Invalid JSON format for checklist data.' });
@@ -40,6 +41,7 @@ const saveChecklist = async (req, res) => {
       clientInfo,
       appointmentId,
       invoiceNo,
+      documentNumber,
       pdfPath: req.file ? req.file.path : null,
       createdBy: req.user.userId,
     });
@@ -84,7 +86,7 @@ const editChecklist = async (req, res) => {
     // Find the checklist by ID and update it
     const updatedChecklist = await Checklist.findByIdAndUpdate(
       id,
-      { clientInfo, appointmentId,invoiceNo },
+      { clientInfo, appointmentId,invoiceNo,documentNumber },
       { new: true } // Return the updated document
     );
 
