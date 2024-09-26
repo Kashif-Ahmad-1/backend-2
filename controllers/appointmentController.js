@@ -122,8 +122,11 @@ exports.getAppointments = async (req, res) => {
   try {
     let appointments;
 
-    if (role === "accountant" || role === "admin") {
+    if (role === "admin") {
       appointments = await Appointment.find()
+        .populate("engineer createdBy checklists quotations");
+    } else if (role === "accountant") {
+      appointments = await Appointment.find({ createdBy: userId }) // Only appointments created by this accountant
         .populate("engineer createdBy checklists quotations");
     } else if (role === "engineer") {
       appointments = await Appointment.find({ engineer: userId })
@@ -160,7 +163,6 @@ exports.getAppointments = async (req, res) => {
           quotationNo: quotation.quotationNo,
           quotationAmount: quotation.quotationAmount,
           pdfPath: quotation.pdfPath,
-         
         })),
       };
     });
@@ -171,6 +173,7 @@ exports.getAppointments = async (req, res) => {
     res.status(500).json({ error: "Error fetching appointments" });
   }
 };
+
 
 // Edit an appointment
 exports.editAppointment = async (req, res) => {
