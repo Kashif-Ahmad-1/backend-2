@@ -18,7 +18,7 @@ app.use(express.json());
 
 app.use(cors({
     // origin: 'http://localhost:3000', // Your frontend URL
-    origin: 'carservice-frontend-1i3i.vercel.app', // Your frontend URL
+    origin: 'https://carservice-frontend-1i3i.vercel.app/', // Your frontend URL
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true, // If you need to send cookies
 }));
