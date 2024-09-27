@@ -17,12 +17,10 @@ const app = express();
 app.use(express.json());
 
 app.use(cors({
-    origin: 'http://localhost:3000', 
-    // origin: 'https://carservice-frontend-1i3i.vercel.app', 
+    origin: ['http://localhost:3000', 'https://carservice-frontend-1i3i.vercel.app'], // Allow both localhost and deployed frontend
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true, // If you need to send cookies
 }));
-
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('MongoDB Connected'))
     .catch(err => console.log(err));
