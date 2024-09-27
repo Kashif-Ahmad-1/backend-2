@@ -17,7 +17,8 @@ const app = express();
 app.use(express.json());
 
 app.use(cors({
-    origin: 'http://localhost:3000', // Your frontend URL
+    // origin: 'http://localhost:3000', // Your frontend URL
+    origin: 'carservice-frontend-1i3i.vercel.app', // Your frontend URL
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true, // If you need to send cookies
 }));
@@ -36,7 +37,7 @@ app.use("/api/quotations", quotationRoutes);
 
 // Serve static files from the "uploads" directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/',(req,res)=>{
+app.get('/',(req,res)=>{
   res.json({message: "Hello this is kashif"})
 })
 app.listen(process.env.PORT, () => {
