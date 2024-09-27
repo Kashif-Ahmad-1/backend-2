@@ -2,17 +2,30 @@ const Quotation = require("../models/Quotation");
 const multer = require("multer");
 const path = require("path");
 const Appointment = require("../models/Appointment");
-
+const cloudinary = require("cloudinary").v2;
 // File storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to file name
-  },
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, 'uploads/');
+//   },
+//   filename: (req, file, cb) => {
+//     cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to file name
+//   },
+// });
+// 
+// const upload = multer({ storage });
+
+
+
+// Cloudinary configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Multer configuration for file uploads
+const storage = multer.memoryStorage(); // Use memory storage to handle uploads directly
 const upload = multer({ storage });
 
 // Save quotation and link it to an existing appointment
@@ -37,13 +50,37 @@ const saveQuotation = async (req, res) => {
       return res.status(400).json({ message: 'Invalid JSON format for quotation data.' });
     }
 
+
+
+    // Upload file to Cloudinary
+    let pdfPath = null;
+    if (req.file) {
+      // Use a promise to wait for the upload to complete
+      pdfPath = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto" },
+          (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              resolve(result.secure_url); // Get the uploaded file's URL
+            }
+          }
+        );
+
+        stream.end(req.file.buffer); // Send the file buffer to Cloudinary
+      });
+    }
+
+
     // Create a new Quotation instance, with the `createdBy` set to the authenticated engineer's ID
     const newQuotation = new Quotation({
       clientInfo,
       appointmentId,
       quotationNo,
       quotationAmount, // Include quotationAmount here
-      pdfPath: req.file ? req.file.path : null,
+      pdfPath,
       status: false, 
       createdBy: req.user.userId // Assuming userId is stored in the JWT
     });
@@ -169,6 +206,7 @@ const deleteQuotation = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 module.exports = {
   saveQuotation,

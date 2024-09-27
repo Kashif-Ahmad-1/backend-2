@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Route to save checklist and upload PDF
 router.post("/",authMiddleware, upload.single('pdf'), saveChecklist);
-router.get("/",authMiddleware, getAllChecklists); // New endpoint
+router.get("/",authMiddleware, getAllChecklists); 
 router.put("/:id", editChecklist); // New endpoint
 router.delete("/:id",authMiddleware, deleteChecklist);
 router.get('/checklist/download/:id', downloadChecklist); 

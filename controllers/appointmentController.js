@@ -16,23 +16,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Function to generate a unique invoice number
-// const generateInvoiceNumber = async () => {
-//   let invoiceNumber;
-//   let isUnique = false;
-
-//   while (!isUnique) {
-//     // Generate a random invoice number (you can customize this format)
-//     invoiceNumber = `INV-${Math.floor(100000 + Math.random() * 900000)}`;
-    
-//     // Check if the invoice number is unique
-//     const existingAppointment = await Appointment.findOne({ invoiceNumber });
-//     isUnique = !existingAppointment; // If it doesn't exist, it's unique
-//   }
-
-//   return invoiceNumber;
-// };
-
 // Accountant creates an appointment
 exports.createAppointment = async (req, res) => {
   const {
