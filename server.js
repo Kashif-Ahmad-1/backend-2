@@ -36,7 +36,9 @@ app.use("/api/quotations", quotationRoutes);
 
 // Serve static files from the "uploads" directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+app.use('/',(req,res)=>{
+  res.json({message: "Hello this is kashif"})
+})
 app.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
     console.log('Server has been successfully deployed!'); // Confirmation message
