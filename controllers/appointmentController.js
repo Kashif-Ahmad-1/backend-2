@@ -3,17 +3,29 @@ const path = require("path");
 const Appointment = require("../models/Appointment");
 const User = require("../models/User");
 const Company = require("../models/Company");
-
+const cloudinary = require("cloudinary").v2;
 // Create an instance of multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Ensure this folder exists
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, "uploads/"); // Ensure this folder exists
+//   },
+//   filename: (req, file, cb) => {
+//     cb(null, `${Date.now()}-${file.originalname}`);
+//   },
+// });
+
+// const upload = multer({ storage });
+
+
+// Cloudinary configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Multer configuration for file uploads
+const storage = multer.memoryStorage(); // Use memory storage to handle uploads directly
 const upload = multer({ storage });
 
 // Accountant creates an appointment
@@ -65,7 +77,26 @@ exports.createAppointment = async (req, res) => {
       });
       await company.save();
     }
+ // Upload file to Cloudinary
+ let document = null;
+ if (req.file) {
+   // Use a promise to wait for the upload to complete
+   document = await new Promise((resolve, reject) => {
+     const stream = cloudinary.uploader.upload_stream(
+       { resource_type: "auto" },
+       (error, result) => {
+         if (error) {
+           console.error('Cloudinary upload error:', error);
+           reject(error);
+         } else {
+           resolve(result.secure_url); // Get the uploaded file's URL
+         }
+       }
+     );
 
+     stream.end(req.file.buffer); // Send the file buffer to Cloudinary
+   });
+ }
     // Generate a unique invoice number
     // const invoiceNumber = await generateInvoiceNumber();
 
@@ -85,7 +116,7 @@ exports.createAppointment = async (req, res) => {
       expectedServiceDate,
       engineer,
       createdBy: req.user.userId,
-      document: req.file ? req.file.path : null,
+      document,
       invoiceNumber, // Add the generated invoice number
     });
 
