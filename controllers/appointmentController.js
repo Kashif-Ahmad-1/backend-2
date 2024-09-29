@@ -10,7 +10,7 @@ const cloudinary = require("cloudinary").v2;
 //     cb(null, "uploads/"); // Ensure this folder exists
 //   },
 //   filename: (req, file, cb) => {
-//     cb(null, `${Date.now()}-${file.originalname}`);
+//     cb(null, ${Date.now()}-${file.originalname});
 //   },
 // });
 
@@ -55,7 +55,6 @@ exports.createAppointment = async (req, res) => {
     return res.status(403).json({ error: "Access denied" });
   }
 
-  // Check if the selected engineer is valid
   try {
     const engineerUser = await User.findById(engineer);
     if (!engineerUser || engineerUser.role !== "engineer") {
@@ -77,28 +76,26 @@ exports.createAppointment = async (req, res) => {
       });
       await company.save();
     }
- // Upload file to Cloudinary
- let document = null;
- if (req.file) {
-   // Use a promise to wait for the upload to complete
-   document = await new Promise((resolve, reject) => {
-     const stream = cloudinary.uploader.upload_stream(
-       { resource_type: "auto" },
-       (error, result) => {
-         if (error) {
-           console.error('Cloudinary upload error:', error);
-           reject(error);
-         } else {
-           resolve(result.secure_url); // Get the uploaded file's URL
-         }
-       }
-     );
 
-     stream.end(req.file.buffer); // Send the file buffer to Cloudinary
-   });
- }
-    // Generate a unique invoice number
-    // const invoiceNumber = await generateInvoiceNumber();
+    // Upload file to Cloudinary
+    let document = null;
+    if (req.file) {
+      document = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto" },
+          (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              resolve(result.secure_url); // Get the uploaded file's URL
+            }
+          }
+        );
+
+        stream.end(req.file.buffer); // Send the file buffer to Cloudinary
+      });
+    }
 
     const appointment = new Appointment({
       clientName,
@@ -114,10 +111,11 @@ exports.createAppointment = async (req, res) => {
       installationDate,
       serviceFrequency,
       expectedServiceDate,
+      nextServiceDate: expectedServiceDate, // Set nextServiceDate to expectedServiceDate initially
       engineer,
       createdBy: req.user.userId,
       document,
-      invoiceNumber, // Add the generated invoice number
+      invoiceNumber,
     });
 
     await appointment.save();
@@ -127,7 +125,6 @@ exports.createAppointment = async (req, res) => {
     res.status(400).json({ error: "Error creating appointment" });
   }
 };
-
 
 // Get all appointments (Accountant/Admin)
 exports.getAppointments = async (req, res) => {
@@ -207,13 +204,38 @@ exports.editAppointment = async (req, res) => {
 
     // Update fields
     Object.assign(appointment, req.body);
+
+    // Update document if new file uploaded
     if (req.file) {
-      appointment.document = req.file.path; // Update document if new file uploaded
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto" },
+          (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              resolve(result.secure_url);
+            }
+          }
+        );
+
+        stream.end(req.file.buffer);
+      });
+      appointment.document = uploadResult;
     }
 
-    // Update expectedServiceDate if nextServiceDate is provided
+    // Update nextServiceDate and automatically calculate expectedServiceDate
     if (req.body.nextServiceDate) {
-      appointment.expectedServiceDate = req.body.nextServiceDate;
+      appointment.nextServiceDate = req.body.nextServiceDate;
+
+      // Example logic to set expectedServiceDate based on nextServiceDate
+      // For example, adding 30 days to the next service date
+      const nextServiceDate = new Date(req.body.nextServiceDate);
+      const expectedServiceDate = new Date(nextServiceDate);
+      expectedServiceDate.setDate(nextServiceDate.getDate()); // Adjust this based on your service frequency logic
+
+      appointment.expectedServiceDate = expectedServiceDate.toISOString().split("T")[0];
     }
 
     await appointment.save();
@@ -223,6 +245,8 @@ exports.editAppointment = async (req, res) => {
     res.status(400).json({ error: "Error updating appointment" });
   }
 };
+
+
 
 // Delete an appointment
 exports.deleteAppointment = async (req, res) => {
@@ -235,10 +259,17 @@ exports.deleteAppointment = async (req, res) => {
   }
 
   try {
-    const appointment = await Appointment.findByIdAndDelete(appointmentId);
+    // Find the appointment first
+    const appointment = await Appointment.findById(appointmentId);
     if (!appointment) {
       return res.status(404).json({ error: "Appointment not found" });
     }
+
+    // Delete associated quotations
+    await Quotation.deleteMany({ appointmentId }); // Remove all quotations related to this appointment
+
+    // Now delete the appointment
+    await Appointment.findByIdAndDelete(appointmentId);
 
     res.status(204).send(); // No content response
   } catch (error) {
@@ -246,6 +277,7 @@ exports.deleteAppointment = async (req, res) => {
     res.status(500).json({ error: "Error deleting appointment" });
   }
 };
+
 
 // Export the multer upload instance for use in routes
 exports.upload = upload;
