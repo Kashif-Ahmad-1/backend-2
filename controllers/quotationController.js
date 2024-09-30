@@ -207,6 +207,86 @@ const deleteQuotation = async (req, res) => {
   }
 };
 
+const getQuotationSummary = async (req, res) => {
+  try {
+    const userId = req.user.userId; // Get the user ID from the request
+    const quotations = await Quotation.find({ createdBy: userId });
+
+    // Calculate total, pending, and completed amounts
+    let totalAmount = 0;
+    let pendingAmount = 0;
+    let completedAmount = 0;
+
+    quotations.forEach(quotation => {
+      totalAmount += quotation.quotationAmount || 0;
+      if (quotation.status) {
+        completedAmount += quotation.quotationAmount || 0;
+      } else {
+        pendingAmount += quotation.quotationAmount || 0;
+      }
+    });
+
+    res.status(200).json({
+      totalAmount,
+      pendingAmount,
+      completedAmount,
+      totalQuotations: quotations.length,
+    });
+  } catch (error) {
+    console.error('Error fetching quotation summary:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getAdminQuotationSummary = async (req, res) => {
+  try {
+    // Check if the user is an admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    // Fetch all quotations
+    const quotations = await Quotation.find();
+
+    // Calculate totals
+    const totalAmount = quotations.reduce((sum, q) => sum + (q.quotationAmount || 0), 0);
+    const pendingAmount = quotations
+      .filter(q => !q.status)
+      .reduce((sum, q) => sum + (q.quotationAmount || 0), 0);
+    const completedAmount = totalAmount - pendingAmount;
+
+    // Group quotations by user
+    const userSummary = quotations.reduce((acc, q) => {
+      const userId = q.createdBy.toString();
+      if (!acc[userId]) {
+        acc[userId] = {
+          totalAmount: 0,
+          pendingAmount: 0,
+          completedAmount: 0,
+          totalQuotations: 0,
+        };
+      }
+      acc[userId].totalAmount += q.quotationAmount || 0;
+      acc[userId].totalQuotations += 1;
+      if (!q.status) {
+        acc[userId].pendingAmount += q.quotationAmount || 0;
+      } else {
+        acc[userId].completedAmount += q.quotationAmount || 0;
+      }
+      return acc;
+    }, {});
+
+    res.status(200).json({ 
+      totalAmount, 
+      pendingAmount, 
+      completedAmount, 
+      userSummary 
+    });
+  } catch (error) {
+    console.error('Error fetching admin quotation summary:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   saveQuotation,
@@ -214,5 +294,7 @@ module.exports = {
   getAllQuotations,
   editQuotation,
   updateQuotationStatus,
-  deleteQuotation, // Export the delete function
+  deleteQuotation,
+  getQuotationSummary,
+  getAdminQuotationSummary // Export the delete function
 };
