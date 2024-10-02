@@ -1,5 +1,5 @@
 const express = require("express");
-const { saveQuotation, upload, getAllQuotations,editQuotation,updateQuotationStatus,deleteQuotation,getQuotationSummary,getAdminQuotationSummary } = require("../controllers/quotationController");
+const { saveQuotation, upload, getAllQuotations,editQuotation,updateQuotationStatus,deleteQuotation,getQuotationSummary,getAdminQuotationSummary,getQuotationsByEngineer } = require("../controllers/quotationController");
 const {authMiddleware} = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -13,5 +13,5 @@ router.put('/:id/status',authMiddleware, updateQuotationStatus);
 router.delete("/:id",authMiddleware, deleteQuotation);
 router.get('/summary', authMiddleware,getQuotationSummary);
 router.get('/admin/summary', authMiddleware,getAdminQuotationSummary);
-
+router.get('/engineer/:engineerId', authMiddleware, getQuotationsByEngineer);
 module.exports = router;

@@ -279,5 +279,49 @@ exports.deleteAppointment = async (req, res) => {
 };
 
 
+// New method to get appointment statistics
+exports.getAppointmentStatistics = async (req, res) => {
+  const { role } = req.user;
+
+  // Only allow admins to access this route
+  if (role !== "admin") {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
+  try {
+    // Get all appointments
+    const appointments = await Appointment.find().populate('engineer createdBy');
+
+    const statistics = {};
+
+    // Aggregate appointment amounts by engineer
+    appointments.forEach((appointment) => {
+      const engineerId = appointment.engineer._id.toString();
+      const appointmentAmount = appointment.appointmentAmount;
+
+      if (!statistics[engineerId]) {
+        statistics[engineerId] = {
+          engineerName: appointment.engineer.name,
+          totalAmount: 0,
+          appointmentCount: 0,
+        };
+      }
+
+      statistics[engineerId].totalAmount += appointmentAmount;
+      statistics[engineerId].appointmentCount++;
+    });
+
+    // Aggregate total appointments created by accountants
+    const accountantCount = appointments.filter(app => app.createdBy.role === 'accountant').length;
+
+    res.json({ statistics, accountantCount });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error fetching appointment statistics" });
+  }
+};
+
+
+
 // Export the multer upload instance for use in routes
 exports.upload = upload;

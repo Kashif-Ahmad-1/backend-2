@@ -164,8 +164,9 @@ const updateQuotationStatus = async (req, res) => {
       return res.status(403).json({ message: 'You do not have permission to update this quotation status.' });
     }
 
-    // Toggle the status
+    // Toggle the status and set statusChangedOn
     quotation.status = !quotation.status; 
+    quotation.statusChangedOn = Date.now(); // Update statusChangedOn field
     await quotation.save();
 
     res.status(200).json({ message: 'Quotation status updated.', quotation });
@@ -174,6 +175,8 @@ const updateQuotationStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 const deleteQuotation = async (req, res) => {
   try {
@@ -245,48 +248,120 @@ const getAdminQuotationSummary = async (req, res) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
 
-    // Fetch all quotations
-    const quotations = await Quotation.find();
+    // Fetch all quotations and populate the createdBy field to get engineer details
+    const quotations = await Quotation.find().populate('createdBy', 'name');
 
-    // Calculate totals
-    const totalAmount = quotations.reduce((sum, q) => sum + (q.quotationAmount || 0), 0);
-    const pendingAmount = quotations
-      .filter(q => !q.status)
-      .reduce((sum, q) => sum + (q.quotationAmount || 0), 0);
-    const completedAmount = totalAmount - pendingAmount;
+    // Initialize overall amounts
+    let overallTotalAmount = 0;
+    let overallPendingAmount = 0;
+    let overallCompletedAmount = 0;
 
-    // Group quotations by user
-    const userSummary = quotations.reduce((acc, q) => {
-      const userId = q.createdBy.toString();
-      if (!acc[userId]) {
-        acc[userId] = {
+    // Initialize summary object for each engineer
+    const summary = {};
+    const dailySummary = {}; // New object for daily summaries
+
+    quotations.forEach(quotation => {
+      const engineerId = quotation.createdBy._id.toString();
+      const engineerName = quotation.createdBy.name || 'Unknown';
+
+      // Initialize summary for this engineer if not present
+      if (!summary[engineerId]) {
+        summary[engineerId] = {
+          engineerName: engineerName,
           totalAmount: 0,
           pendingAmount: 0,
           completedAmount: 0,
           totalQuotations: 0,
         };
       }
-      acc[userId].totalAmount += q.quotationAmount || 0;
-      acc[userId].totalQuotations += 1;
-      if (!q.status) {
-        acc[userId].pendingAmount += q.quotationAmount || 0;
-      } else {
-        acc[userId].completedAmount += q.quotationAmount || 0;
-      }
-      return acc;
-    }, {});
 
-    res.status(200).json({ 
-      totalAmount, 
-      pendingAmount, 
-      completedAmount, 
-      userSummary 
+      // Update overall totals
+      summary[engineerId].totalAmount += quotation.quotationAmount || 0;
+      overallTotalAmount += quotation.quotationAmount || 0; // Add to overall total
+      summary[engineerId].totalQuotations += 1;
+
+      // Update amounts based on quotation status
+      if (quotation.status) {
+        summary[engineerId].completedAmount += quotation.quotationAmount || 0;
+        overallCompletedAmount += quotation.quotationAmount || 0; // Add to overall completed
+      } else {
+        summary[engineerId].pendingAmount += quotation.quotationAmount || 0;
+        overallPendingAmount += quotation.quotationAmount || 0; // Add to overall pending
+      }
+
+      // Grouping by date for daily summary
+      const generatedDate = quotation.generatedOn.toISOString().split('T')[0]; // Extracting date (YYYY-MM-DD)
+      if (!dailySummary[generatedDate]) {
+        dailySummary[generatedDate] = {};
+      }
+
+      // Initialize engineer entry for this date if not present
+      if (!dailySummary[generatedDate][engineerId]) {
+        dailySummary[generatedDate][engineerId] = {
+          engineerName: engineerName,
+          totalCreated: 0,
+          totalCreatedAmount: 0, // Total amount of quotations created that day
+          totalCompleted: 0,
+          totalCompletedAmount: 0, // Total amount of completed quotations that day
+          totalPending: 0,
+          totalPendingAmount: 0, // Total amount of pending quotations that day
+        };
+      }
+
+      // Update daily summary for this engineer
+      dailySummary[generatedDate][engineerId].totalCreated += 1;
+      dailySummary[generatedDate][engineerId].totalCreatedAmount += quotation.quotationAmount || 0;
+
+      if (quotation.status) {
+        dailySummary[generatedDate][engineerId].totalCompleted += 1;
+        dailySummary[generatedDate][engineerId].totalCompletedAmount += quotation.quotationAmount || 0;
+      } else {
+        dailySummary[generatedDate][engineerId].totalPending += 1;
+        dailySummary[generatedDate][engineerId].totalPendingAmount += quotation.quotationAmount || 0;
+      }
+    });
+
+    // Convert summary object to an array for response
+    const summaryArray = Object.values(summary);
+    const dailySummaryArray = Object.entries(dailySummary).map(([date, engineers]) => ({
+      date,
+      engineers: Object.values(engineers),
+    }));
+
+    res.status(200).json({
+      overallTotalAmount,
+      overallPendingAmount,
+      overallCompletedAmount,
+      engineerSummary: summaryArray,
+      dailySummary: dailySummaryArray, // Include the daily summary in the response
     });
   } catch (error) {
     console.error('Error fetching admin quotation summary:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
+const getQuotationsByEngineer = async (req, res) => {
+  try {
+    const { engineerId } = req.params; // Get the engineer ID from the URL parameters
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - 30); // Last 30 days
+
+    // Fetch quotations created by the specified engineer within the last 30 days
+    const quotations = await Quotation.find({
+      createdBy: engineerId,
+      generatedOn: { $gte: startDate },
+    }).populate('createdBy', 'name'); // Populate with engineer name
+
+    res.status(200).json(quotations);
+  } catch (error) {
+    console.error('Error fetching quotations by engineer:', error);
+    res.status(500).json({ message: "Error fetching quotations." });
+  }
+};
+
 
 module.exports = {
   saveQuotation,
@@ -296,5 +371,6 @@ module.exports = {
   updateQuotationStatus,
   deleteQuotation,
   getQuotationSummary,
-  getAdminQuotationSummary // Export the delete function
+  getAdminQuotationSummary,
+  getQuotationsByEngineer, // Export the delete function
 };

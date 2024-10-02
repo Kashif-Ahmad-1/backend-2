@@ -4,6 +4,7 @@ const {
   getAppointments,
   editAppointment,
   deleteAppointment,
+  getAppointmentStatistics,
   upload,
 } = require('../controllers/appointmentController');
 const { authMiddleware } = require('../middleware/authMiddleware');
@@ -19,5 +20,7 @@ router.put('/:appointmentId', authMiddleware, upload.single('document'), editApp
 
 // Route for deleting an appointment
 router.delete('/:appointmentId', authMiddleware, deleteAppointment);
+
+router.get("/statistics", authMiddleware, getAppointmentStatistics);
 
 module.exports = router;
