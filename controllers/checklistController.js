@@ -1,5 +1,6 @@
 const Checklist = require("../models/Checklist");
 const multer = require("multer");
+const Counter = require("../models/Counter");
 const path = require("path");
 const Appointment = require("../models/Appointment");
 require('dotenv').config();
@@ -71,6 +72,13 @@ const saveChecklist = async (req, res) => {
       });
     }
 
+     // Increment invcdocument
+     const counter = await Counter.findOneAndUpdate(
+      { name: "checklistInvcdocument" },
+      { $inc: { count: 1 } },
+      { new: true, upsert: true } // Create if it doesn't exist
+    );
+
     // Create a new Checklist instance
     const newChecklist = new Checklist({
       clientInfo,
@@ -79,6 +87,7 @@ const saveChecklist = async (req, res) => {
       documentNumber,
       pdfPath, // Ensure this is set to the Cloudinary URL
       createdBy: req.user.userId,
+      invcdocument: counter.count, 
     });
 
     // Save the checklist to the database
@@ -211,11 +220,29 @@ const downloadChecklist = async (req, res) => {
   }
 };
 
+const getLastChecklist = async (req, res) => {
+  try {
+    const checklist = await Checklist.findOne({})
+      .sort({ generatedOn: -1 }) // Sort by generatedOn in descending order
+      .populate('appointmentId'); // Optionally populate appointment data
+
+    if (!checklist) {
+      return res.status(404).json({ message: 'No checklists found.' });
+    }
+
+    res.status(200).json(checklist);
+  } catch (error) {
+    console.error('Error fetching last checklist:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   saveChecklist,
   upload,
   getAllChecklists,
   editChecklist,
   deleteChecklist, 
-  downloadChecklist, // Export the new function
+  downloadChecklist, 
+  getLastChecklist,  // Export the new function
 };

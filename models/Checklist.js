@@ -14,9 +14,10 @@ const checklistSchema = new mongoose.Schema({
   refrigeratorList: Array,
   invoiceNo: String,
   documentNumber: String,
-  pdfPath: String, // Path to the uploaded PDF
+  pdfPath: String,
   generatedOn: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  invcdocument: { type: Number, default: 0 }, // New field for invoice document
 });
 
 module.exports = mongoose.model("Checklist", checklistSchema);

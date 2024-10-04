@@ -35,6 +35,29 @@ app.use("/api/quotations", quotationRoutes);
 
 // Serve static files from the "uploads" directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
+
+// // Template Schema
+// const templateSchema = new mongoose.Schema({
+//     template: String,
+// });
+
+// const Template = mongoose.model('Template', templateSchema);
+
+// // Get template
+// app.get('/api/template', async (req, res) => {
+//     const template = await Template.findOne({});
+//     res.json(template);
+// });
+
+// // Save template
+// app.post('/api/template', async (req, res) => {
+//     await Template.findOneAndUpdate({}, { template: req.body.template }, { upsert: true });
+//     res.sendStatus(200);
+// });
+
+
 app.get('/',(req,res)=>{
   res.json({message: "Hello this is kashif"})
 })
