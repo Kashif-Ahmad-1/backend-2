@@ -36,21 +36,20 @@ const saveQuotation = async (req, res) => {
       return res.status(400).json({ message: 'Quotation data is required.' });
     }
 
-    let appointmentId, clientInfo, quotationNo, quotationAmount;
+    let appointmentId, clientInfo, quotationNo, quotationAmount, items;
 
     // Attempt to parse quotationData
     try {
-      const { appointmentId: id, clientInfo: info, quotationNo: string, quotationAmount: amount } = JSON.parse(req.body.quotationData);
+      const { appointmentId: id, clientInfo: info, quotationNo: string, quotationAmount: amount, items: itemList } = JSON.parse(req.body.quotationData);
       appointmentId = id;
       clientInfo = info;
       quotationNo = string;
       quotationAmount = amount; // Assign quotationAmount
+      items = itemList; // Assign items from the parsed data
     } catch (jsonError) {
       console.log('JSON parsing error:', jsonError);
       return res.status(400).json({ message: 'Invalid JSON format for quotation data.' });
     }
-
-
 
     // Upload file to Cloudinary
     let pdfPath = null;
@@ -73,15 +72,15 @@ const saveQuotation = async (req, res) => {
       });
     }
 
-
     // Create a new Quotation instance, with the `createdBy` set to the authenticated engineer's ID
     const newQuotation = new Quotation({
       clientInfo,
       appointmentId,
       quotationNo,
       quotationAmount, // Include quotationAmount here
+      items, // Include items here
       pdfPath,
-      status: false, 
+      status: false,
       createdBy: req.user.userId // Assuming userId is stored in the JWT
     });
 
@@ -104,6 +103,7 @@ const saveQuotation = async (req, res) => {
   }
 };
 
+
 const getAllQuotations = async (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin';
@@ -118,7 +118,7 @@ const getAllQuotations = async (req, res) => {
 const editQuotation = async (req, res) => {
   try {
     const { id } = req.params; // Get the ID from the URL parameters
-    const { clientInfo, appointmentId, quotationNo, quotationAmount } = req.body; // Extract data from the request body
+    const { clientInfo, appointmentId, quotationNo, items } = req.body; // Extract data from the request body
 
     const isAdmin = req.user.role === 'admin';
     const quotation = await Quotation.findById(id);
@@ -131,10 +131,24 @@ const editQuotation = async (req, res) => {
       return res.status(403).json({ message: 'You do not have permission to edit this quotation.' });
     }
 
-    // Find the quotation by ID and update it
+    // Calculate the total amount from items
+    const quotationAmount = items.reduce((total, item) => {
+      return total + item.totalWithGST; // Accumulate totalWithGST for each item
+    }, 0);
+
+    // Prepare updated data
+    const updatedData = {
+      clientInfo: clientInfo || quotation.clientInfo, // Use existing value if not provided
+      appointmentId: appointmentId || quotation.appointmentId, // Use existing value if not provided
+      quotationNo: quotationNo || quotation.quotationNo, // Use existing value if not provided
+      quotationAmount, // Use calculated total
+      items: items || quotation.items // Use existing value if not provided
+    };
+
+    // Update the quotation with the provided details
     const updatedQuotation = await Quotation.findByIdAndUpdate(
       id,
-      { clientInfo, appointmentId, quotationNo, quotationAmount }, // Include quotationAmount in update
+      updatedData, // Use merged data for the update
       { new: true } // Return the updated document
     );
 
@@ -148,6 +162,9 @@ const editQuotation = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 const updateQuotationStatus = async (req, res) => {
   try {
@@ -176,6 +193,20 @@ const updateQuotationStatus = async (req, res) => {
   }
 };
 
+
+const getQuotationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const quotation = await Quotation.findById(id);
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found.' });
+    }
+    res.status(200).json({ quotation });
+  } catch (error) {
+    console.error('Error fetching quotation:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 const deleteQuotation = async (req, res) => {
@@ -368,9 +399,11 @@ module.exports = {
   upload,
   getAllQuotations,
   editQuotation,
+  getQuotationById,
   updateQuotationStatus,
   deleteQuotation,
   getQuotationSummary,
   getAdminQuotationSummary,
   getQuotationsByEngineer, // Export the delete function
 };
+

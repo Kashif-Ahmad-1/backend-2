@@ -23,7 +23,7 @@ exports.addMachine = async (req, res) => {
 exports.getMachines = async (req, res) => {
     const { role } = req.user;
   
-    if (role !== 'admin' && role !== 'accountant') {
+    if (role !== 'admin' && role !== 'accountant' && role !== 'engineer') {
       return res.status(403).json({ error: 'Access denied' });
     }
   

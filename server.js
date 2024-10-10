@@ -11,6 +11,9 @@ const checklistRoutes = require("./routes/checklistRoutes");
 const quotationRoutes = require("./routes/quotationRoutes");
 const multer = require('multer');
 const cors = require('cors');
+const bodyParser = require('body-parser');
+const fs = require('fs'); // Add this line at the top
+
 
 dotenv.config();
 const app = express();
@@ -37,27 +40,45 @@ app.use("/api/quotations", quotationRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
+app.use(bodyParser.json());
 
-// // Template Schema
-// const templateSchema = new mongoose.Schema({
-//     template: String,
-// });
+// Initial templates
+const templatesFilePath = './templates.json';
 
-// const Template = mongoose.model('Template', templateSchema);
+// Load templates from file
+const loadTemplates = () => {
+  if (!fs.existsSync(templatesFilePath)) {
+    fs.writeFileSync(templatesFilePath, JSON.stringify({
+      template1: "Hello! 📄\n\nWe have generated a new PDF document for you.\n\n📑 **Document Title**: Document Title Here\n✍️ **Description**: Brief description of what this PDF contains.\n🔗 **Download Link**: {pdfUrl}\n\nIf you have any questions, feel free to reach out!\n\nThank you! 😊",
+      template2: "Hi! 👋\n\nYour requested document is ready!\n\n📄 **Title**: Your Document Title\n📋 **Details**: This is a brief description of your document.\n🔗 **Access the document**: {pdfUrl}\n\nLet us know if you need any further assistance!\n\nCheers! 😊"
+    }));
+  }
+  return JSON.parse(fs.readFileSync(templatesFilePath));
+};
 
-// // Get template
-// app.get('/api/template', async (req, res) => {
-//     const template = await Template.findOne({});
-//     res.json(template);
-// });
+app.get('/templates', (req, res) => {
+    try {
+      const templates = loadTemplates();
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+  
+  app.post('/templates', (req, res) => {
+    try {
+      const { template1, template2 } = req.body;
+      fs.writeFileSync(templatesFilePath, JSON.stringify({ template1, template2 }));
+      res.json({ message: 'Templates saved successfully!' });
+    } catch (error) {
+      console.error("Error saving templates:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
 
-// // Save template
-// app.post('/api/template', async (req, res) => {
-//     await Template.findOneAndUpdate({}, { template: req.body.template }, { upsert: true });
-//     res.sendStatus(200);
-// });
 
-
+  
 app.get('/',(req,res)=>{
   res.json({message: "Hello this is kashif"})
 })
