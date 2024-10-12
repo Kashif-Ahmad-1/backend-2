@@ -3,21 +3,7 @@ const multer = require("multer");
 const path = require("path");
 const Appointment = require("../models/Appointment");
 const cloudinary = require("cloudinary").v2;
-// File storage configuration
-// const storage = multer.diskStorage({
-//   destination: (req, file, cb) => {
-//     cb(null, 'uploads/');
-//   },
-//   filename: (req, file, cb) => {
-//     cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to file name
-//   },
-// });
-// 
-// const upload = multer({ storage });
 
-
-
-// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -36,16 +22,17 @@ const saveQuotation = async (req, res) => {
       return res.status(400).json({ message: 'Quotation data is required.' });
     }
 
-    let appointmentId, clientInfo, quotationNo, quotationAmount, items;
+    let appointmentId, clientInfo, quotationNo, quotationAmount, items,invoiceNo;
 
     // Attempt to parse quotationData
     try {
-      const { appointmentId: id, clientInfo: info, quotationNo: string, quotationAmount: amount, items: itemList } = JSON.parse(req.body.quotationData);
+      const { appointmentId: id, clientInfo: info, quotationNo: string, quotationAmount: amount, items: itemList ,invoiceNo: invoice} = JSON.parse(req.body.quotationData);
       appointmentId = id;
       clientInfo = info;
       quotationNo = string;
-      quotationAmount = amount; // Assign quotationAmount
-      items = itemList; // Assign items from the parsed data
+      quotationAmount = amount; 
+      items = itemList; 
+      invoiceNo = invoice;
     } catch (jsonError) {
       console.log('JSON parsing error:', jsonError);
       return res.status(400).json({ message: 'Invalid JSON format for quotation data.' });
@@ -57,13 +44,15 @@ const saveQuotation = async (req, res) => {
       // Use a promise to wait for the upload to complete
       pdfPath = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-          { resource_type: "auto" },
+          { resource_type: "auto" ,folder: "quotations"},
           (error, result) => {
             if (error) {
               console.error('Cloudinary upload error:', error);
               reject(error);
             } else {
-              resolve(result.secure_url); // Get the uploaded file's URL
+              const cleanUrl = result.secure_url.replace(/\/v[^\/]+\//, '/');
+          resolve(cleanUrl);
+
             }
           }
         );
@@ -77,11 +66,12 @@ const saveQuotation = async (req, res) => {
       clientInfo,
       appointmentId,
       quotationNo,
-      quotationAmount, // Include quotationAmount here
-      items, // Include items here
+      quotationAmount, 
+      items, 
       pdfPath,
+      invoiceNo,
       status: false,
-      createdBy: req.user.userId // Assuming userId is stored in the JWT
+      createdBy: req.user.userId 
     });
 
     const savedQuotation = await newQuotation.save();
@@ -117,8 +107,8 @@ const getAllQuotations = async (req, res) => {
 
 const editQuotation = async (req, res) => {
   try {
-    const { id } = req.params; // Get the ID from the URL parameters
-    const { clientInfo, appointmentId, quotationNo, items } = req.body; // Extract data from the request body
+    const { id } = req.params;
+    const { clientInfo, appointmentId, quotationNo, items } = req.body;
 
     const isAdmin = req.user.role === 'admin';
     const quotation = await Quotation.findById(id);
@@ -126,35 +116,53 @@ const editQuotation = async (req, res) => {
       return res.status(404).json({ message: 'Quotation not found.' });
     }
 
-    // Check if the user is an admin or the creator of the quotation
     if (!isAdmin && quotation.createdBy.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'You do not have permission to edit this quotation.' });
     }
 
-    // Calculate the total amount from items
     const quotationAmount = items.reduce((total, item) => {
-      return total + item.totalWithGST; // Accumulate totalWithGST for each item
+      return total + item.totalWithGST;
     }, 0);
 
-    // Prepare updated data
     const updatedData = {
-      clientInfo: clientInfo || quotation.clientInfo, // Use existing value if not provided
-      appointmentId: appointmentId || quotation.appointmentId, // Use existing value if not provided
-      quotationNo: quotationNo || quotation.quotationNo, // Use existing value if not provided
-      quotationAmount, // Use calculated total
-      items: items || quotation.items // Use existing value if not provided
+      clientInfo: clientInfo || quotation.clientInfo,
+      appointmentId: appointmentId || quotation.appointmentId,
+      quotationNo: quotationNo || quotation.quotationNo,
+      quotationAmount,
+      items: items || quotation.items
     };
 
-    // Update the quotation with the provided details
+    // Handle PDF upload if a new file is provided
+    if (req.file) {
+      // Upload new PDF to Cloudinary
+      const pdfPath = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { resource_type: "auto" ,folder: "quotations"},
+          (error, result) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              const cleanUrl = result.secure_url.replace(/\/v[^\/]+\//, '/');
+          resolve(cleanUrl);
+
+            }
+          }
+        );
+
+        stream.end(req.file.buffer);
+      });
+      
+      // Update the pdfPath in updatedData
+      updatedData.pdfPath = pdfPath; // Ensure you have a field for storing this
+    }
+
+    // Update the quotation with the new data
     const updatedQuotation = await Quotation.findByIdAndUpdate(
       id,
-      updatedData, // Use merged data for the update
-      { new: true } // Return the updated document
+      updatedData,
+      { new: true }
     );
-
-    if (!updatedQuotation) {
-      return res.status(404).json({ message: 'Quotation not found.' });
-    }
 
     res.status(200).json({ quotation: updatedQuotation });
   } catch (error) {
@@ -162,6 +170,53 @@ const editQuotation = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+const updateQuotationPdf = async (req, res) => {
+  try {
+    const { id } = req.params; // Get the ID from the URL parameters
+    const quotation = await Quotation.findById(id);
+
+    if (!quotation) {
+      return res.status(404).json({ message: 'Quotation not found.' });
+    }
+
+    // Check if a new file is provided
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded.' });
+    }
+
+    // Upload new PDF to Cloudinary
+    const pdfPath = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { resource_type: "auto",folder: "quotations" },
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            const cleanUrl = result.secure_url.replace(/\/v[^\/]+\//, '/');
+          resolve(cleanUrl);
+
+          }
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    // Update the quotation's pdfPath with the new one
+    quotation.pdfPath = pdfPath;
+    await quotation.save();
+
+    res.status(200).json({ message: 'PDF updated successfully.', quotation });
+  } catch (error) {
+    console.error('Error updating PDF:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
 
 
 
@@ -404,6 +459,7 @@ module.exports = {
   deleteQuotation,
   getQuotationSummary,
   getAdminQuotationSummary,
-  getQuotationsByEngineer, // Export the delete function
+  getQuotationsByEngineer,
+  updateQuotationPdf, // Export the delete function
 };
 

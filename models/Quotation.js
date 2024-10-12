@@ -26,11 +26,11 @@
 const mongoose = require('mongoose');
 
 const itemSchema = new mongoose.Schema({
-  itemName: { type: String, required: true },
-  quantity: { type: Number, required: true },
-  rate: { type: Number, required: true },
-  gstAmount: { type: Number, required: true },
-  totalWithGST: { type: Number, required: true },
+  itemName: { type: String, },
+  quantity: { type: Number,  },
+  rate: { type: Number,  },
+  gstAmount: { type: Number,  },
+  totalWithGST: { type: Number, },
   
 }, { _id: false }); // Prevent creating an id for subdocuments
 
@@ -43,10 +43,11 @@ const quotationSchema = new mongoose.Schema({
     engineer: String,
   },
   appointmentId: { type: String, required: true },
-  quotationNo: { type: String, required: true, unique: true },
-  quotationAmount: { type: Number, required: true },
+  quotationNo: { type: String, },
+  invoiceNo: { type: String, },
+  quotationAmount: { type: Number,  required: true},
   items: [itemSchema], // Array of item documents
-  pdfPath: { type: String, required: true },
+  pdfPath: { type: String,  },
   createdAt: { type: Date, default: Date.now },
   status: { type: Boolean, default: false },
   generatedOn: { type: Date, default: Date.now },

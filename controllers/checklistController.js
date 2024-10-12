@@ -46,13 +46,14 @@ const saveChecklist = async (req, res) => {
       // Use a promise to wait for the upload to complete
       pdfPath = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-          { resource_type: "auto" },
+          { resource_type: "auto",folder: "service record" },
           (error, result) => {
             if (error) {
               console.error('Cloudinary upload error:', error);
               reject(error);
             } else {
-              resolve(result.secure_url); // Get the uploaded file's URL
+              const cleanUrl = result.secure_url.replace(/\/v[^\/]+\//, '/');
+              resolve(cleanUrl);
             }
           }
         );
